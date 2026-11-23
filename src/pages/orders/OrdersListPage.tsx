@@ -62,7 +62,10 @@ export const OrdersListPage: React.FC = () => {
       order.client_phone.includes(term)
 
     const matchesCategory =
-      selectedCategory === 'ALL' || order.category_id === selectedCategory
+      selectedCategory === 'ALL' ||
+      order.category_id === selectedCategory ||
+      order.category?.id === selectedCategory ||
+      order.category?.slug === selectedCategory
 
     const matchesStatus =
       selectedStatus === 'ALL' || order.overall_status === selectedStatus

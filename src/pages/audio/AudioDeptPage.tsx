@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   Headphones,
   Upload,
@@ -11,6 +11,10 @@ import {
   Clock,
   Sparkles,
   ArrowRight,
+  UserCheck,
+  Phone,
+  Shield,
+  Layers,
 } from 'lucide-react'
 import { dataService } from '../../services/dataService'
 import { Order, OrderOverallStatus } from '../../types/database'
@@ -20,9 +24,13 @@ import { formatBengaliDate, formatBengaliNumber } from '../../lib/utils'
 
 export const AudioDeptPage: React.FC = () => {
   const { user } = useAuth()
+  const [searchParams] = useSearchParams()
+  const targetOrderId = searchParams.get('orderId')
+
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
+  const [scopeFilter, setScopeFilter] = useState<'ALL' | 'MINE'>('ALL')
 
   // Submission Modal
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
@@ -31,6 +39,7 @@ export const AudioDeptPage: React.FC = () => {
   const [notes, setNotes] = useState('')
   const [submissionType, setSubmissionType] = useState<'PREVIEW' | 'FINAL'>('FINAL')
   const [submitting, setSubmitting] = useState(false)
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
 
   const loadAudioOrders = async () => {
     setLoading(true)
@@ -51,11 +60,27 @@ export const AudioDeptPage: React.FC = () => {
   }, [])
 
   const handleStartWork = async (orderId: string) => {
+    setActionLoadingId(orderId)
     try {
       await dataService.updateOrderStatus(orderId, 'AUDIO_IN_PROGRESS', 'অডিও ডিজাইনার কাজ শুরু করেছেন।')
-      loadAudioOrders()
+      await loadAudioOrders()
     } catch (err) {
       console.error('Start work failed:', err)
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleClaimOrder = async (orderId: string) => {
+    if (!user) return
+    setActionLoadingId(orderId)
+    try {
+      await dataService.claimAudioOrder(orderId, user.id)
+      await loadAudioOrders()
+    } catch (err) {
+      console.error('Claim audio order failed:', err)
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
@@ -78,7 +103,7 @@ export const AudioDeptPage: React.FC = () => {
       setFileName('')
       setDriveLink('')
       setNotes('')
-      loadAudioOrders()
+      await loadAudioOrders()
     } catch (err) {
       console.error('Submit audio failed:', err)
     } finally {
@@ -87,14 +112,24 @@ export const AudioDeptPage: React.FC = () => {
   }
 
   const filteredOrders = orders.filter((o) => {
+    // 1. Scope filter (All vs My Assigned Tasks)
+    if (scopeFilter === 'MINE') {
+      if (o.assigned_audio_staff_id !== user?.id) return false
+    }
+
+    // 2. Status filter
     if (statusFilter === 'ALL') return true
+    if (statusFilter === 'AUDIO_PENDING') {
+      return o.overall_status === 'AUDIO_PENDING' || o.overall_status === 'NEW'
+    }
     return o.overall_status === statusFilter
   })
 
   // Quick stats
   const inProgressCount = orders.filter((o) => o.overall_status === 'AUDIO_IN_PROGRESS').length
   const revisionCount = orders.filter((o) => o.overall_status === 'AUDIO_REVISION').length
-  const pendingCount = orders.filter((o) => o.overall_status === 'AUDIO_PENDING').length
+  const pendingCount = orders.filter((o) => o.overall_status === 'AUDIO_PENDING' || o.overall_status === 'NEW').length
+  const myAssignedCount = user ? orders.filter((o) => o.assigned_audio_staff_id === user.id).length : 0
 
   return (
     <div className="space-y-6">
@@ -110,21 +145,62 @@ export const AudioDeptPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Scope Toggle: All vs My Work */}
+          <div className="p-1 rounded-2xl bg-slate-900 border border-slate-800 flex items-center gap-1 text-xs">
+            <button
+              onClick={() => setScopeFilter('ALL')}
+              className={`px-3 py-1.5 rounded-xl transition ${
+                scopeFilter === 'ALL'
+                  ? 'bg-blue-600 text-white font-semibold shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              সকল কাজ ({formatBengaliNumber(orders.length)})
+            </button>
+            <button
+              onClick={() => setScopeFilter('MINE')}
+              className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1 ${
+                scopeFilter === 'MINE'
+                  ? 'bg-blue-600 text-white font-semibold shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <UserCheck className="h-3.5 w-3.5" />
+              <span>আমার কাজ ({formatBengaliNumber(myAssignedCount)})</span>
+            </button>
+          </div>
+
           {revisionCount > 0 && (
             <span className="px-3 py-1 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-400 text-xs font-semibold animate-pulse flex items-center gap-1.5">
               <AlertCircle className="h-3.5 w-3.5" />
-              <span>{formatBengaliNumber(revisionCount)} টি রিভিশন অনুরোধ</span>
+              <span>{formatBengaliNumber(revisionCount)} টি রিভিশন</span>
             </span>
           )}
         </div>
       </div>
 
+      {/* Target Order Notification Banner if coming from notification link */}
+      {targetOrderId && (
+        <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-between gap-3 text-xs text-blue-300">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-blue-400 shrink-0" />
+            <span>আপনি নোটিফিকেশন থেকে নির্দিষ্ট অর্ডারে প্রবেশ করেছেন। সংশ্লিষ্ট অর্ডারটি নিচে চিহ্নিত করা হয়েছে।</span>
+          </div>
+          <Link
+            to="/audio"
+            className="px-2.5 py-1 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 text-[11px] font-medium"
+          >
+            সব দেখুন
+          </Link>
+        </div>
+      )}
+
       {/* Department Status Filters */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
         {[
           { key: 'ALL', label: 'সকল অডিও কাজ', count: orders.length },
-          { key: 'AUDIO_PENDING', label: 'পেন্ডিং', count: pendingCount },
+          { key: 'AUDIO_PENDING', label: 'পেন্ডিং / নতুন', count: pendingCount },
           { key: 'AUDIO_IN_PROGRESS', label: 'কাজ চলছে', count: inProgressCount },
           { key: 'AUDIO_REVISION', label: 'রিভিশন প্রয়োজন', count: revisionCount },
           { key: 'AUDIO_QC', label: 'কিউসি পর্যালোচনায়', count: orders.filter((o) => o.overall_status === 'AUDIO_QC').length },
@@ -153,89 +229,150 @@ export const AudioDeptPage: React.FC = () => {
             অডিও অর্ডার লোড হচ্ছে...
           </div>
         ) : filteredOrders.length === 0 ? (
-          <div className="col-span-full p-12 text-center text-slate-500 text-xs">
-            এই তালিকায় কোন অডিও কাজ পাওয়া যায়নি।
+          <div className="col-span-full p-12 text-center text-slate-500 text-xs bg-slate-900/50 rounded-3xl border border-slate-800">
+            {scopeFilter === 'MINE'
+              ? 'আপনার নামে এখনও কোনো অডিও কাজ বরাদ্দ করা হয়নি। "সকল কাজ" ট্যাবে গিয়ে কাজের দায়িত্ব নিন।'
+              : 'এই তালিকায় কোন অডিও কাজ পাওয়া যায়নি।'}
           </div>
         ) : (
-          filteredOrders.map((ord) => (
-            <div
-              key={ord.id}
-              className={`p-5 rounded-3xl bg-slate-900/80 border transition-all flex flex-col justify-between space-y-4 shadow-xl ${
-                ord.overall_status === 'AUDIO_REVISION'
-                  ? 'border-rose-500/50 bg-rose-950/10'
-                  : ord.overall_status === 'AUDIO_IN_PROGRESS'
-                  ? 'border-blue-500/40'
-                  : 'border-slate-800'
-              }`}
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-sm">{ord.order_number}</span>
-                  <StatusBadge status={ord.overall_status} />
-                </div>
+          filteredOrders.map((ord) => {
+            const isAssignedToMe = user && ord.assigned_audio_staff_id === user.id
+            const isTarget = targetOrderId === ord.id || targetOrderId === ord.order_number
+            const isPending = ord.overall_status === 'AUDIO_PENDING' || ord.overall_status === 'NEW'
 
-                <h3 className="font-semibold text-slate-100 text-sm line-clamp-1">{ord.title}</h3>
-                <p className="text-xs text-blue-400/90">{ord.category?.name_bn}</p>
+            return (
+              <div
+                key={ord.id}
+                id={`order-${ord.id}`}
+                className={`p-5 rounded-3xl bg-slate-900/80 border transition-all flex flex-col justify-between space-y-4 shadow-xl ${
+                  isTarget
+                    ? 'border-blue-500 ring-2 ring-blue-500/50 bg-blue-950/20'
+                    : ord.overall_status === 'AUDIO_REVISION'
+                    ? 'border-rose-500/50 bg-rose-950/10'
+                    : ord.overall_status === 'AUDIO_IN_PROGRESS'
+                    ? 'border-blue-500/40'
+                    : 'border-slate-800'
+                }`}
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white text-sm">{ord.order_number}</span>
+                    <StatusBadge status={ord.overall_status} />
+                  </div>
 
-                {ord.overall_status === 'AUDIO_REVISION' && (
-                  <div className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs space-y-1">
-                    <div className="font-semibold flex items-center gap-1">
-                      <AlertCircle className="h-3.5 w-3.5 text-rose-400" />
-                      <span>রিভিশন নির্দেশনা:</span>
+                  <h3 className="font-semibold text-slate-100 text-sm line-clamp-1">{ord.title}</h3>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-blue-400/90 font-medium">{ord.category?.name_bn || 'কাস্টম অর্ডার'}</span>
+                    <PriorityBadge priority={ord.priority} />
+                  </div>
+
+                  {/* My Assignment Badge */}
+                  {isAssignedToMe && (
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-500/20 border border-blue-500/40 text-blue-300 text-[11px] font-semibold">
+                      <Headphones className="h-3 w-3 text-blue-400" />
+                      <span>আপনার দায়িত্বপ্রাপ্ত কাজ</span>
                     </div>
-                    <p className="text-[11px] leading-relaxed">
-                      {ord.revisions && ord.revisions.length > 0
-                        ? ord.revisions[0].instructions
-                        : 'ভয়েস উচ্চারণ ও বিট সংশোধন করে পুনরায় সাবমিট করুন।'}
-                    </p>
-                  </div>
-                )}
+                  )}
 
-                <div className="text-[11px] text-slate-400 space-y-1 pt-1 border-t border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <span>ডেডলাইন:</span>
-                    <span className="font-medium text-amber-400">{formatBengaliDate(ord.deadline)}</span>
+                  {/* Client and Phone */}
+                  <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] space-y-1">
+                    <div className="flex items-center justify-between text-slate-300">
+                      <span className="text-slate-400">ক্লায়েন্ট / প্রার্থী:</span>
+                      <span className="font-semibold text-white">{ord.client_name}</span>
+                    </div>
+                    {ord.client_phone && (
+                      <div className="flex items-center justify-between text-slate-300">
+                        <span className="text-slate-400">WhatsApp / ফোন:</span>
+                        <a
+                          href={`https://wa.me/88${ord.client_phone.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-emerald-400 hover:underline flex items-center gap-1 font-mono"
+                        >
+                          <Phone className="h-3 w-3" />
+                          <span>{ord.client_phone}</span>
+                        </a>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span>অ্যাসাইনকৃত:</span>
-                    <span className="text-slate-300">{ord.assigned_audio_staff?.bengali_name || 'অ্যাসাইন হয়নি'}</span>
+
+                  {ord.overall_status === 'AUDIO_REVISION' && (
+                    <div className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs space-y-1">
+                      <div className="font-semibold flex items-center gap-1">
+                        <AlertCircle className="h-3.5 w-3.5 text-rose-400" />
+                        <span>রিভিশন নির্দেশনা:</span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed">
+                        {ord.revisions && ord.revisions.length > 0
+                          ? ord.revisions[0].instructions
+                          : 'ভয়েস উচ্চারণ ও বিট সংশোধন করে পুনরায় সাবমিট করুন।'}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="text-[11px] text-slate-400 space-y-1 pt-1 border-t border-slate-800">
+                    <div className="flex items-center justify-between">
+                      <span>ডেডলাইন:</span>
+                      <span className="font-medium text-amber-400">{formatBengaliDate(ord.deadline)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>অডিও ডিজাইনার:</span>
+                      <span className={ord.assigned_audio_staff ? 'text-slate-200 font-medium' : 'text-amber-400 font-medium'}>
+                        {ord.assigned_audio_staff?.bengali_name || 'কেউ বরাদ্দ নেই'}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Actions */}
-              <div className="pt-2 border-t border-slate-800/80 flex items-center gap-2">
-                {ord.overall_status === 'AUDIO_PENDING' && (
-                  <button
-                    onClick={() => handleStartWork(ord.id)}
-                    className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition"
+                {/* Actions */}
+                <div className="pt-2 border-t border-slate-800/80 flex items-center gap-2 flex-wrap">
+                  {/* Claim Button if not assigned or not assigned to me */}
+                  {!ord.assigned_audio_staff_id && (
+                    <button
+                      onClick={() => handleClaimOrder(ord.id)}
+                      disabled={actionLoadingId === ord.id}
+                      className="flex-1 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md transition flex items-center justify-center gap-1.5"
+                    >
+                      <UserCheck className="h-3.5 w-3.5" />
+                      <span>{actionLoadingId === ord.id ? 'গ্রহণ হচ্ছে...' : 'কাজের দায়িত্ব নিন'}</span>
+                    </button>
+                  )}
+
+                  {/* Start Work button if pending and assigned */}
+                  {isPending && ord.assigned_audio_staff_id && (
+                    <button
+                      onClick={() => handleStartWork(ord.id)}
+                      disabled={actionLoadingId === ord.id}
+                      className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5"
+                    >
+                      <Play className="h-3.5 w-3.5 fill-current" />
+                      <span>কাজ শুরু করুন</span>
+                    </button>
+                  )}
+
+                  {(ord.overall_status === 'AUDIO_IN_PROGRESS' || ord.overall_status === 'AUDIO_REVISION') && (
+                    <button
+                      onClick={() => {
+                        setSelectedOrder(ord)
+                        setFileName(`${ord.order_number}_Audio_Final.mp3`)
+                      }}
+                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+                    >
+                      <Upload className="h-3.5 w-3.5" />
+                      <span>অডিও সাবমিট করুন</span>
+                    </button>
+                  )}
+
+                  <Link
+                    to={`/orders/${ord.id}`}
+                    className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition"
                   >
-                    কাজ শুরু করুন
-                  </button>
-                )}
-
-                {(ord.overall_status === 'AUDIO_IN_PROGRESS' || ord.overall_status === 'AUDIO_REVISION') && (
-                  <button
-                    onClick={() => {
-                      setSelectedOrder(ord)
-                      setFileName(`${ord.order_number}_Audio_Final.mp3`)
-                    }}
-                    className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition"
-                  >
-                    <Upload className="h-3.5 w-3.5" />
-                    <span>অডিও সাবমিট করুন</span>
-                  </button>
-                )}
-
-                <Link
-                  to={`/orders/${ord.id}`}
-                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition"
-                >
-                  বিস্তারিত
-                </Link>
+                    বিস্তারিত
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))
+            )
+          })
         )}
       </div>
 

@@ -23,7 +23,7 @@ import {
   INITIAL_NOTIFICATIONS,
 } from './mockData'
 
-// Fresh production storage keys (purges any older demo items)
+// Fresh production storage keys
 const STORAGE_KEYS = {
   ORDERS: 'hitune_prod_orders_v2',
   STAFF: 'hitune_prod_staff_v2',
@@ -63,6 +63,11 @@ function saveLocal<T>(key: string, val: T): void {
   }
 }
 
+export const isUuid = (val?: string | null): boolean => {
+  if (!val || typeof val !== 'string') return false
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim())
+}
+
 class DataService {
   private orders: Order[] = loadLocal(STORAGE_KEYS.ORDERS, INITIAL_ORDERS)
   private staff: Profile[] = loadLocal(STORAGE_KEYS.STAFF, INITIAL_STAFF)
@@ -89,26 +94,63 @@ class DataService {
   // ORDERS
   // -------------------------------------------------------------
   async getOrders(): Promise<Order[]> {
+    // 1. Ensure staff is loaded so we can accurately attach staff profiles
+    if (this.staff.length === 0) {
+      await this.getStaff()
+    }
+
     if (await this.checkLiveSupport()) {
       try {
         const { data, error } = await supabase
           .from('orders')
           .select(`
             *,
-            category:order_categories(*),
-            assigned_audio_staff:assigned_audio_staff_id(*),
-            assigned_video_staff:assigned_video_staff_id(*)
+            category:order_categories(*)
           `)
           .order('created_at', { ascending: false })
-        if (!error && data) return data as Order[]
+
+        if (!error && data) {
+          const liveOrders: Order[] = data.map((o: any) => ({
+            ...o,
+            category: o.category || this.categories.find((c) => c.id === o.category_id) || null,
+            assigned_audio_staff: this.staff.find((s) => s.id === o.assigned_audio_staff_id) || null,
+            assigned_video_staff: this.staff.find((s) => s.id === o.assigned_video_staff_id) || null,
+            comments: this.comments[o.id] || [],
+            revisions: this.revisions[o.id] || [],
+          }))
+
+          // Merge local-only orders that haven't synced to Supabase yet
+          const liveIds = new Set(liveOrders.map((o) => o.id))
+          const liveNumbers = new Set(liveOrders.map((o) => o.order_number))
+          const localOnly = this.orders.filter(
+            (loc) => !liveIds.has(loc.id) && !liveNumbers.has(loc.order_number)
+          )
+
+          const merged = [...liveOrders, ...localOnly]
+          this.orders = merged
+          saveLocal(STORAGE_KEYS.ORDERS, this.orders)
+          return merged
+        } else if (error) {
+          console.warn('Supabase getOrders query error, falling back to local storage:', error.message)
+        }
       } catch (err) {
-        console.warn('Supabase getOrders query error, using local fallback:', err)
+        console.warn('Supabase getOrders query exception, using local fallback:', err)
       }
     }
-    return [...this.orders]
+
+    // Always enrich local orders with staff before returning
+    return this.orders.map((o) => ({
+      ...o,
+      assigned_audio_staff: o.assigned_audio_staff || this.staff.find((s) => s.id === o.assigned_audio_staff_id) || null,
+      assigned_video_staff: o.assigned_video_staff || this.staff.find((s) => s.id === o.assigned_video_staff_id) || null,
+    }))
   }
 
   async getOrderById(id: string): Promise<Order | null> {
+    if (this.staff.length === 0) {
+      await this.getStaff()
+    }
+
     if (await this.checkLiveSupport()) {
       try {
         const { data, error } = await supabase
@@ -116,13 +158,22 @@ class DataService {
           .select(`
             *,
             category:order_categories(*),
-            details:order_details(*),
-            assigned_audio_staff:assigned_audio_staff_id(*),
-            assigned_video_staff:assigned_video_staff_id(*)
+            details:order_details(*)
           `)
           .or(`id.eq.${id},order_number.eq.${id}`)
-          .single()
-        if (!error && data) return data as Order
+          .maybeSingle()
+
+        if (!error && data) {
+          const liveOrder: Order = {
+            ...data,
+            category: data.category || this.categories.find((c) => c.id === data.category_id) || null,
+            assigned_audio_staff: this.staff.find((s) => s.id === data.assigned_audio_staff_id) || null,
+            assigned_video_staff: this.staff.find((s) => s.id === data.assigned_video_staff_id) || null,
+            comments: this.comments[data.id] || [],
+            revisions: this.revisions[data.id] || [],
+          }
+          return liveOrder
+        }
       } catch (err) {
         console.warn('Supabase getOrderById error, using local fallback:', err)
       }
@@ -133,6 +184,8 @@ class DataService {
 
     return {
       ...found,
+      assigned_audio_staff: found.assigned_audio_staff || this.staff.find((s) => s.id === found.assigned_audio_staff_id) || null,
+      assigned_video_staff: found.assigned_video_staff || this.staff.find((s) => s.id === found.assigned_video_staff_id) || null,
       comments: this.comments[found.id] || [],
       revisions: this.revisions[found.id] || [],
     }
@@ -141,30 +194,45 @@ class DataService {
   async createOrder(payload: Partial<Order> & { dynamic_details?: any }): Promise<Order> {
     const currentYear = new Date().getFullYear()
     const nextSeq = this.orders.length + 1
-    const orderNumber = `HT-${currentYear}-${String(nextSeq).padStart(4, '0')}`
-    const orderId = `ord-${Date.now()}`
+    const localOrderNumber = `HT-${currentYear}-${String(nextSeq).padStart(4, '0')}`
+    const localOrderId = `ord-${Date.now()}`
 
-    const cat = this.categories.find((c) => c.id === payload.category_id) || this.categories[0]
+    // 1. Resolve Category
+    await this.getCategories() // ensure categories are loaded from Supabase
+    let matchedCat = this.categories.find((c) => c.id === payload.category_id || c.slug === (payload.category as any)?.slug)
+    if (!matchedCat && this.categories.length > 0) {
+      matchedCat = this.categories[0]
+    }
+
     const totalAmount = Number(payload.total_amount) || 0
     const advanceAmount = Number(payload.advance_amount) || 0
     const paidAmount = advanceAmount
     const dueAmount = Math.max(0, totalAmount - paidAmount)
     const paymentStatus = paidAmount <= 0 ? 'UNPAID' : dueAmount <= 0 ? 'PAID' : 'PARTIAL'
+    const audioRequired = payload.audio_required ?? true
+    const videoRequired = payload.video_required ?? false
+
+    // Initial overall status
+    const initialStatus: OrderOverallStatus = audioRequired
+      ? 'AUDIO_PENDING'
+      : videoRequired
+      ? 'VIDEO_PENDING'
+      : 'NEW'
 
     const newOrder: Order = {
-      id: orderId,
-      order_number: orderNumber,
+      id: localOrderId,
+      order_number: localOrderNumber,
       title: payload.title || 'নতুন অর্ডার',
       client_name: payload.client_name || '',
       client_phone: payload.client_phone || '',
       client_address: payload.client_address || '',
-      category_id: cat.id,
-      category: cat,
+      category_id: matchedCat?.id || 'cat-general',
+      category: matchedCat,
       priority: payload.priority || 'NORMAL',
       deadline: payload.deadline || null,
-      audio_required: payload.audio_required ?? true,
-      video_required: payload.video_required ?? false,
-      overall_status: payload.audio_required ? 'AUDIO_PENDING' : payload.video_required ? 'VIDEO_PENDING' : 'NEW',
+      audio_required: audioRequired,
+      video_required: videoRequired,
+      overall_status: initialStatus,
       total_amount: totalAmount,
       advance_amount: advanceAmount,
       discount_amount: 0,
@@ -181,6 +249,7 @@ class DataService {
       updated_at: new Date().toISOString(),
     }
 
+    // Attach staff references
     if (payload.assigned_audio_staff_id) {
       newOrder.assigned_audio_staff = this.staff.find((s) => s.id === payload.assigned_audio_staff_id) || null
     }
@@ -188,21 +257,26 @@ class DataService {
       newOrder.assigned_video_staff = this.staff.find((s) => s.id === payload.assigned_video_staff_id) || null
     }
 
-    this.orders.unshift(newOrder)
-    saveLocal(STORAGE_KEYS.ORDERS, this.orders)
-
+    // 2. Sync to Supabase if live support is on
     if (await this.checkLiveSupport()) {
       try {
-        await supabase.from('orders').insert({
+        // Resolve safe UUIDs for Supabase foreign keys
+        const safeCategoryId = isUuid(matchedCat?.id) ? matchedCat?.id : null
+        const safeAudioStaffId = isUuid(newOrder.assigned_audio_staff_id) ? newOrder.assigned_audio_staff_id : null
+        const safeVideoStaffId = isUuid(newOrder.assigned_video_staff_id) ? newOrder.assigned_video_staff_id : null
+        const safeCreatedBy = isUuid(newOrder.created_by) ? newOrder.created_by : null
+
+        const insertPayload: any = {
           title: newOrder.title,
           client_name: newOrder.client_name,
           client_phone: newOrder.client_phone,
           client_address: newOrder.client_address,
-          category_id: newOrder.category_id,
+          category_id: safeCategoryId,
           priority: newOrder.priority,
           deadline: newOrder.deadline,
           audio_required: newOrder.audio_required,
           video_required: newOrder.video_required,
+          overall_status: newOrder.overall_status,
           total_amount: newOrder.total_amount,
           advance_amount: newOrder.advance_amount,
           paid_amount: newOrder.paid_amount,
@@ -210,12 +284,49 @@ class DataService {
           payment_status: newOrder.payment_status,
           description: newOrder.description,
           internal_instructions: newOrder.internal_instructions,
-        })
-      } catch (e) {
-        console.warn('Could not insert to live Supabase, local copy saved:', e)
+          assigned_audio_staff_id: safeAudioStaffId,
+          assigned_video_staff_id: safeVideoStaffId,
+          created_by: safeCreatedBy,
+        }
+
+        const { data: createdRow, error: insertError } = await supabase
+          .from('orders')
+          .insert(insertPayload)
+          .select('*, category:order_categories(*)')
+          .single()
+
+        if (!insertError && createdRow) {
+          // Adopt Supabase's generated UUID and sequential order number
+          newOrder.id = createdRow.id
+          newOrder.order_number = createdRow.order_number || localOrderNumber
+          if (createdRow.category) {
+            newOrder.category = createdRow.category
+          }
+
+          // Insert dynamic order details if provided
+          if (payload.dynamic_details && Object.keys(payload.dynamic_details).length > 0) {
+            try {
+              await supabase.from('order_details').insert({
+                order_id: createdRow.id,
+                ...payload.dynamic_details,
+              })
+            } catch (detailErr) {
+              console.warn('Could not save order_details to Supabase:', detailErr)
+            }
+          }
+        } else if (insertError) {
+          console.warn('Supabase insert orders failed (saved to local fallback):', insertError.message)
+        }
+      } catch (e: any) {
+        console.warn('Could not insert to live Supabase, local copy saved:', e.message)
       }
     }
 
+    // Save to local storage
+    this.orders.unshift(newOrder)
+    saveLocal(STORAGE_KEYS.ORDERS, this.orders)
+
+    // 3. Record Advance Payment if any
     if (advanceAmount > 0) {
       await this.recordPayment({
         order_id: newOrder.id,
@@ -227,6 +338,7 @@ class DataService {
       })
     }
 
+    // 4. Send Notifications
     if (newOrder.assigned_audio_staff_id) {
       this.createNotification({
         user_id: newOrder.assigned_audio_staff_id,
@@ -237,7 +349,87 @@ class DataService {
       })
     }
 
+    // Also notify all audio designers if unassigned
+    if (!newOrder.assigned_audio_staff_id && audioRequired) {
+      const audioDesigners = this.staff.filter((s) => s.role === 'AUDIO_DESIGNER' || s.roles?.includes('AUDIO_DESIGNER'))
+      audioDesigners.forEach((designer) => {
+        this.createNotification({
+          user_id: designer.id,
+          title: 'নতুন অডিও কাজ এসেছে',
+          message: `${newOrder.order_number}: ${newOrder.title} কাজের দায়িত্ব নিন।`,
+          link: `/audio?orderId=${newOrder.id}`,
+          type: 'INFO',
+        })
+      })
+    }
+
     return newOrder
+  }
+
+  async claimAudioOrder(orderId: string, staffId: string): Promise<Order> {
+    const idx = this.orders.findIndex((o) => o.id === orderId)
+    if (idx === -1) throw new Error('Order not found')
+
+    const staffMember = this.staff.find((s) => s.id === staffId)
+    this.orders[idx].assigned_audio_staff_id = staffId
+    this.orders[idx].assigned_audio_staff = staffMember || null
+    if (this.orders[idx].overall_status === 'AUDIO_PENDING' || this.orders[idx].overall_status === 'NEW') {
+      this.orders[idx].overall_status = 'AUDIO_IN_PROGRESS'
+    }
+    this.orders[idx].updated_at = new Date().toISOString()
+    saveLocal(STORAGE_KEYS.ORDERS, this.orders)
+
+    if (await this.checkLiveSupport()) {
+      try {
+        const safeStaffId = isUuid(staffId) ? staffId : null
+        await supabase
+          .from('orders')
+          .update({
+            assigned_audio_staff_id: safeStaffId,
+            overall_status: this.orders[idx].overall_status,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', orderId)
+      } catch (err) {
+        console.warn('Supabase claimAudioOrder failed:', err)
+      }
+    }
+
+    await this.addComment(orderId, staffId, `[অডিও দায়িত্ব গ্রহণ]: ${staffMember?.bengali_name || 'অডিও ডিজাইনার'} কাজের দায়িত্ব নিয়েছেন এবং কাজ শুরু করেছেন।`)
+    return this.orders[idx]
+  }
+
+  async claimVideoOrder(orderId: string, staffId: string): Promise<Order> {
+    const idx = this.orders.findIndex((o) => o.id === orderId)
+    if (idx === -1) throw new Error('Order not found')
+
+    const staffMember = this.staff.find((s) => s.id === staffId)
+    this.orders[idx].assigned_video_staff_id = staffId
+    this.orders[idx].assigned_video_staff = staffMember || null
+    if (this.orders[idx].overall_status === 'VIDEO_PENDING' || this.orders[idx].overall_status === 'NEW') {
+      this.orders[idx].overall_status = 'VIDEO_IN_PROGRESS'
+    }
+    this.orders[idx].updated_at = new Date().toISOString()
+    saveLocal(STORAGE_KEYS.ORDERS, this.orders)
+
+    if (await this.checkLiveSupport()) {
+      try {
+        const safeStaffId = isUuid(staffId) ? staffId : null
+        await supabase
+          .from('orders')
+          .update({
+            assigned_video_staff_id: safeStaffId,
+            overall_status: this.orders[idx].overall_status,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', orderId)
+      } catch (err) {
+        console.warn('Supabase claimVideoOrder failed:', err)
+      }
+    }
+
+    await this.addComment(orderId, staffId, `[ভিডিও দায়িত্ব গ্রহণ]: ${staffMember?.bengali_name || 'ভিডিও এডিটর'} ভিডিও কাজের দায়িত্ব নিয়েছেন।`)
+    return this.orders[idx]
   }
 
   async updateOrderStatus(orderId: string, status: OrderOverallStatus, notes?: string): Promise<Order> {
@@ -247,6 +439,20 @@ class DataService {
     this.orders[idx].overall_status = status
     this.orders[idx].updated_at = new Date().toISOString()
     saveLocal(STORAGE_KEYS.ORDERS, this.orders)
+
+    if (await this.checkLiveSupport()) {
+      try {
+        await supabase
+          .from('orders')
+          .update({
+            overall_status: status,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', orderId)
+      } catch (e) {
+        console.warn('Could not update order status in Supabase:', e)
+      }
+    }
 
     if (notes) {
       await this.addComment(orderId, 'system', `[স্ট্যাটাস পরিবর্তন]: ${status}. মন্তব্য: ${notes}`)
@@ -276,25 +482,28 @@ class DataService {
 
     if (await this.checkLiveSupport()) {
       try {
-        await supabase
-          .from('orders')
-          .update({
-            title: updates.title,
-            client_name: updates.client_name,
-            client_phone: updates.client_phone,
-            client_address: updates.client_address,
-            deadline: updates.deadline,
-            priority: updates.priority,
-            total_amount: updatedTotal,
-            paid_amount: updatedPaid,
-            due_amount: updatedDue,
-            assigned_audio_staff_id: updates.assigned_audio_staff_id,
-            assigned_video_staff_id: updates.assigned_video_staff_id,
-            description: updates.description,
-            internal_instructions: updates.internal_instructions,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', orderId)
+        const updatePayload: any = {
+          updated_at: new Date().toISOString(),
+        }
+        if (updates.title !== undefined) updatePayload.title = updates.title
+        if (updates.client_name !== undefined) updatePayload.client_name = updates.client_name
+        if (updates.client_phone !== undefined) updatePayload.client_phone = updates.client_phone
+        if (updates.client_address !== undefined) updatePayload.client_address = updates.client_address
+        if (updates.deadline !== undefined) updatePayload.deadline = updates.deadline
+        if (updates.priority !== undefined) updatePayload.priority = updates.priority
+        if (updates.total_amount !== undefined) updatePayload.total_amount = updatedTotal
+        if (updates.paid_amount !== undefined) updatePayload.paid_amount = updatedPaid
+        if (updates.due_amount !== undefined) updatePayload.due_amount = updatedDue
+        if (updates.description !== undefined) updatePayload.description = updates.description
+        if (updates.internal_instructions !== undefined) updatePayload.internal_instructions = updates.internal_instructions
+        if (updates.assigned_audio_staff_id !== undefined) {
+          updatePayload.assigned_audio_staff_id = isUuid(updates.assigned_audio_staff_id) ? updates.assigned_audio_staff_id : null
+        }
+        if (updates.assigned_video_staff_id !== undefined) {
+          updatePayload.assigned_video_staff_id = isUuid(updates.assigned_video_staff_id) ? updates.assigned_video_staff_id : null
+        }
+
+        await supabase.from('orders').update(updatePayload).eq('id', orderId)
       } catch (e) {
         console.warn('Could not update order in Supabase:', e)
       }
@@ -351,7 +560,7 @@ class DataService {
     const nextStatus: OrderOverallStatus = payload.department === 'AUDIO' ? 'AUDIO_QC' : 'VIDEO_QC'
     await this.updateOrderStatus(payload.order_id, nextStatus)
 
-    const qcStaff = this.staff.filter((s) => s.role === 'QUALITY_CONTROLLER' || s.roles.includes('QUALITY_CONTROLLER'))
+    const qcStaff = this.staff.filter((s) => s.role === 'QUALITY_CONTROLLER' || s.roles?.includes('QUALITY_CONTROLLER'))
     qcStaff.forEach((qc) => {
       this.createNotification({
         user_id: qc.id,
@@ -407,7 +616,7 @@ class DataService {
       this.notifyDeliveryTeam(order)
     }
 
-    await this.updateOrderStatus(orderId, nextStatus, `কোয়ালিটি কন্ট্রোল দ্বারা অনুমোদিত। মন্তব্য: ${notes || 'সব ঠিক আছে।'}`)
+    await this.updateOrderStatus(orderId, nextStatus, `কিউসি অনুমোদন সম্পন্ন। মন্তব্য: ${notes || 'মানসম্মত হয়েছে'}`)
     return { nextStatus }
   }
 
@@ -415,8 +624,8 @@ class DataService {
     orderId: string,
     submissionId: string,
     department: 'AUDIO' | 'VIDEO',
-    instructions: string,
-    qcUserId: string
+    requestedBy: string,
+    instructions: string
   ): Promise<Revision> {
     const order = await this.getOrderById(orderId)
     if (!order) throw new Error('Order not found')
@@ -428,18 +637,17 @@ class DataService {
       saveLocal(STORAGE_KEYS.SUBMISSIONS, this.submissions)
     }
 
-    const revList = this.revisions[orderId] || []
-    const revNumber = revList.length + 1
+    const existingRevs = this.revisions[orderId] || []
+    const revNumber = existingRevs.length + 1
 
     const newRev: Revision = {
       id: `rev-${Date.now()}`,
       order_id: orderId,
-      submission_id: submissionId,
       department,
+      requested_by: requestedBy,
+      requester: this.staff.find((s) => s.id === requestedBy),
       revision_number: revNumber,
       instructions,
-      requested_by: qcUserId,
-      requester: this.staff.find((s) => s.id === qcUserId),
       status: 'PENDING',
       created_at: new Date().toISOString(),
     }
@@ -466,7 +674,7 @@ class DataService {
   }
 
   private notifyDeliveryTeam(order: Order) {
-    const deliveryStaff = this.staff.filter((s) => s.role === 'DELIVERY_MANAGER' || s.roles.includes('DELIVERY_MANAGER'))
+    const deliveryStaff = this.staff.filter((s) => s.role === 'DELIVERY_MANAGER' || s.roles?.includes('DELIVERY_MANAGER'))
     deliveryStaff.forEach((del) => {
       this.createNotification({
         user_id: del.id,
@@ -517,6 +725,20 @@ class DataService {
     if (!this.comments[orderId]) this.comments[orderId] = []
     this.comments[orderId].push(newComment)
     saveLocal(STORAGE_KEYS.COMMENTS, this.comments)
+
+    if (await this.checkLiveSupport()) {
+      try {
+        const safeUserId = isUuid(userId) ? userId : null
+        await supabase.from('order_comments').insert({
+          order_id: orderId,
+          user_id: safeUserId,
+          message,
+        })
+      } catch (err) {
+        console.warn('Supabase addComment failed:', err)
+      }
+    }
+
     return newComment
   }
 
@@ -559,17 +781,33 @@ class DataService {
       const order = this.orders[orderIdx]
       const orderTotal = Number(order.total_amount) || 0
       const orderDiscount = Number(order.discount_amount) || 0
-      
+
       const allOrderPayments = this.payments.filter((p) => p.order_id === order.id)
       const totalPaid = allOrderPayments.reduce((sum, p) => sum + Number(p.amount), 0)
-      const due = Math.max(0, (orderTotal - orderDiscount) - totalPaid)
-      
+      const due = Math.max(0, orderTotal - orderDiscount - totalPaid)
+
       order.paid_amount = totalPaid
       order.due_amount = due
       order.payment_status = totalPaid <= 0 ? 'UNPAID' : due <= 0 ? 'PAID' : 'PARTIAL'
       order.updated_at = new Date().toISOString()
-      
+
       saveLocal(STORAGE_KEYS.ORDERS, this.orders)
+
+      if (await this.checkLiveSupport()) {
+        try {
+          await supabase
+            .from('orders')
+            .update({
+              paid_amount: totalPaid,
+              due_amount: due,
+              payment_status: order.payment_status,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', payload.order_id)
+        } catch (err) {
+          console.warn('Could not sync payment to Supabase orders table:', err)
+        }
+      }
     }
 
     return newPayment
@@ -681,6 +919,28 @@ class DataService {
   // NOTIFICATIONS
   // -------------------------------------------------------------
   async getNotifications(userId?: string): Promise<NotificationItem[]> {
+    if (await this.checkLiveSupport()) {
+      try {
+        let q = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(50)
+        if (userId && isUuid(userId)) {
+          q = q.eq('user_id', userId)
+        }
+        const { data, error } = await q
+        if (!error && data && data.length > 0) {
+          const liveList = data as NotificationItem[]
+          // Merge with any local notifications
+          const liveIds = new Set(liveList.map((n) => n.id))
+          const localOnly = this.notifications.filter((n) => !liveIds.has(n.id))
+          const merged = [...liveList, ...localOnly]
+          this.notifications = merged
+          saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
+          return userId ? merged.filter((n) => n.user_id === userId) : merged
+        }
+      } catch (err) {
+        console.warn('Supabase getNotifications error:', err)
+      }
+    }
+
     if (!userId) return [...this.notifications]
     return this.notifications.filter((n) => n.user_id === userId)
   }
@@ -691,6 +951,14 @@ class DataService {
       notif.is_read = true
       saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
     }
+
+    if (await this.checkLiveSupport()) {
+      try {
+        await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+      } catch (e) {
+        console.warn('Supabase markNotificationAsRead failed:', e)
+      }
+    }
   }
 
   async markAllNotificationsAsRead(userId: string): Promise<void> {
@@ -698,6 +966,16 @@ class DataService {
       if (n.user_id === userId) n.is_read = true
     })
     saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
+
+    if (await this.checkLiveSupport()) {
+      try {
+        if (isUuid(userId)) {
+          await supabase.from('notifications').update({ is_read: true }).eq('user_id', userId)
+        }
+      } catch (e) {
+        console.warn('Supabase markAllNotificationsAsRead failed:', e)
+      }
+    }
   }
 
   createNotification(item: Omit<NotificationItem, 'id' | 'is_read' | 'created_at'>): NotificationItem {
@@ -709,6 +987,27 @@ class DataService {
     }
     this.notifications.unshift(notif)
     saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
+
+    // Attempt live Supabase sync
+    if (isSupabaseConfigured && isUuid(item.user_id)) {
+      Promise.resolve(
+        supabase
+          .from('notifications')
+          .insert({
+            user_id: item.user_id,
+            title: item.title,
+            message: item.message,
+            link: item.link || null,
+            type: item.type || 'INFO',
+            is_read: false,
+          })
+      )
+        .then(({ error }: any) => {
+          if (error) console.warn('Supabase createNotification notice:', error.message)
+        })
+        .catch(() => {})
+    }
+
     return notif
   }
 
@@ -719,7 +1018,15 @@ class DataService {
     if (await this.checkLiveSupport()) {
       try {
         const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: true })
-        if (!error && data && data.length > 0) return data as Profile[]
+        if (!error && data && data.length > 0) {
+          const liveStaff = data as Profile[]
+          const liveIds = new Set(liveStaff.map((s) => s.id))
+          const localOnly = this.staff.filter((s) => !liveIds.has(s.id))
+          const merged = [...liveStaff, ...localOnly]
+          this.staff = merged
+          saveLocal(STORAGE_KEYS.STAFF, this.staff)
+          return merged
+        }
       } catch (err) {
         console.warn('Supabase getStaff error:', err)
       }
@@ -819,6 +1126,22 @@ class DataService {
   }
 
   async getCategories(): Promise<OrderCategory[]> {
+    if (await this.checkLiveSupport()) {
+      try {
+        const { data, error } = await supabase
+          .from('order_categories')
+          .select('*')
+          .order('sort_order', { ascending: true })
+
+        if (!error && data && data.length > 0) {
+          this.categories = data as OrderCategory[]
+          saveLocal(STORAGE_KEYS.CATEGORIES, this.categories)
+          return this.categories
+        }
+      } catch (err) {
+        console.warn('Supabase getCategories error:', err)
+      }
+    }
     return [...this.categories]
   }
 
@@ -833,6 +1156,29 @@ class DataService {
       is_active: true,
       sort_order: this.categories.length + 1,
     }
+
+    if (await this.checkLiveSupport()) {
+      try {
+        const { data, error } = await supabase
+          .from('order_categories')
+          .insert({
+            name: payload.name,
+            name_bn: payload.name_bn,
+            slug: payload.slug,
+            dynamic_form_type: payload.dynamic_form_type || 'GENERAL',
+            sort_order: newCat.sort_order,
+          })
+          .select()
+          .single()
+
+        if (!error && data) {
+          newCat.id = data.id
+        }
+      } catch (err) {
+        console.warn('Supabase createCategory error:', err)
+      }
+    }
+
     this.categories.push(newCat)
     saveLocal(STORAGE_KEYS.CATEGORIES, this.categories)
     return newCat
