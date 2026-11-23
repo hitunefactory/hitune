@@ -136,3 +136,36 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Print Styles */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print,
+  header,
+  aside,
+  footer,
+  nav {
+    display: none !important;
+  }
+  .invoice-modal-overlay {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+  .printable-invoice-wrapper {
+    border: none !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .printable-invoice-area {
+    padding: 10px !important;
+  }
+}

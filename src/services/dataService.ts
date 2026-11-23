@@ -255,6 +255,54 @@ class DataService {
     return this.orders[idx]
   }
 
+  async updateOrderDetails(orderId: string, updates: Partial<Order>): Promise<Order> {
+    const idx = this.orders.findIndex((o) => o.id === orderId)
+    if (idx === -1) throw new Error('Order not found')
+
+    const existing = this.orders[idx]
+    const updatedTotal = updates.total_amount !== undefined ? Number(updates.total_amount) : existing.total_amount
+    const updatedPaid = updates.paid_amount !== undefined ? Number(updates.paid_amount) : existing.paid_amount
+    const updatedDue = Math.max(0, updatedTotal - updatedPaid)
+
+    this.orders[idx] = {
+      ...existing,
+      ...updates,
+      total_amount: updatedTotal,
+      paid_amount: updatedPaid,
+      due_amount: updatedDue,
+      updated_at: new Date().toISOString(),
+    }
+    saveLocal(STORAGE_KEYS.ORDERS, this.orders)
+
+    if (await this.checkLiveSupport()) {
+      try {
+        await supabase
+          .from('orders')
+          .update({
+            title: updates.title,
+            client_name: updates.client_name,
+            client_phone: updates.client_phone,
+            client_address: updates.client_address,
+            deadline: updates.deadline,
+            priority: updates.priority,
+            total_amount: updatedTotal,
+            paid_amount: updatedPaid,
+            due_amount: updatedDue,
+            assigned_audio_staff_id: updates.assigned_audio_staff_id,
+            assigned_video_staff_id: updates.assigned_video_staff_id,
+            description: updates.description,
+            internal_instructions: updates.internal_instructions,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', orderId)
+      } catch (e) {
+        console.warn('Could not update order in Supabase:', e)
+      }
+    }
+
+    return this.orders[idx]
+  }
+
   // -------------------------------------------------------------
   // SUBMISSIONS & QUALITY CONTROL
   // -------------------------------------------------------------

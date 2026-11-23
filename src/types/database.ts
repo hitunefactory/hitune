@@ -35,12 +35,14 @@ export type OrderCategorySlug =
   | 'full-production'
   | 'custom-order'
 
+export type DynamicFormType = 'ELECTION' | 'WAZ' | 'ADMISSION' | 'GENERAL'
+
 export interface OrderCategory {
   id: string
   name: string
   name_bn: string
   slug: OrderCategorySlug | string
-  dynamic_form_type: 'ELECTION' | 'WAZ' | 'ADMISSION' | 'GENERAL'
+  dynamic_form_type: DynamicFormType
   icon?: string
   is_active: boolean
   sort_order: number

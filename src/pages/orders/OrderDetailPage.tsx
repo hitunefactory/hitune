@@ -22,6 +22,9 @@ import {
   RefreshCw,
   Layers,
   Sparkles,
+  Receipt,
+  Edit3,
+  Printer,
 } from 'lucide-react'
 import { dataService } from '../../services/dataService'
 import { Order, TaskSubmission, Revision, OrderComment, Profile, PaymentMethod } from '../../types/database'
@@ -29,6 +32,8 @@ import { StatusBadge, PriorityBadge, PaymentBadge } from '../../components/ui/St
 import { useAuth } from '../../contexts/AuthContext'
 import { formatBengaliNumber, formatBengaliDate, formatCurrency } from '../../lib/utils'
 import { STATUS_MAP_BN, PAYMENT_METHOD_MAP_BN } from '../../lib/constants'
+import { InvoiceModal } from '../../components/orders/InvoiceModal'
+import { EditOrderModal } from '../../components/orders/EditOrderModal'
 
 export const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -58,6 +63,10 @@ export const OrderDetailPage: React.FC = () => {
   const [recipientName, setRecipientName] = useState('')
   const [recipientPhone, setRecipientPhone] = useState('')
   const [deliveryNotes, setDeliveryNotes] = useState('')
+
+  // Invoice & Edit Order Modals
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
 
   // Tabs
   const [activeTab, setActiveTab] = useState<'details' | 'submissions' | 'comments' | 'payments'>('details')
@@ -201,11 +210,33 @@ export const OrderDetailPage: React.FC = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Invoice / Cash Memo Button */}
+          <button
+            onClick={() => setShowInvoiceModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-semibold rounded-xl shadow transition cursor-pointer"
+            title="গ্রাহক মানি রসিদ ও ইনভয়েস প্রিন্ট"
+          >
+            <Receipt className="h-3.5 w-3.5 text-blue-400" />
+            <span>মানি রসিদ ও ইনভয়েস</span>
+          </button>
+
+          {/* Edit Order Button for Super Admin & Order Manager */}
+          {hasRole(['SUPER_ADMIN', 'ORDER_MANAGER']) && (
+            <button
+              onClick={() => setShowEditModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-semibold rounded-xl shadow transition cursor-pointer"
+              title="অর্ডার তথ্য ও মূল্য সম্পাদনা"
+            >
+              <Edit3 className="h-3.5 w-3.5 text-amber-400" />
+              <span>অর্ডার সম্পাদনা</span>
+            </button>
+          )}
+
           {order.due_amount > 0 && hasRole(['SUPER_ADMIN', 'ACCOUNTANT', 'ORDER_MANAGER']) && (
             <button
               onClick={() => setShowPaymentModal(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-md transition"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-md transition cursor-pointer"
             >
               <DollarSign className="h-4 w-4" />
               <span>পেমেন্ট সংগ্রহ</span>
@@ -215,7 +246,7 @@ export const OrderDetailPage: React.FC = () => {
           {order.overall_status === 'READY_FOR_DELIVERY' && hasRole(['SUPER_ADMIN', 'DELIVERY_MANAGER']) && (
             <button
               onClick={() => setShowDeliveryModal(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold rounded-xl shadow-md transition animate-pulse"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold rounded-xl shadow-md transition animate-pulse cursor-pointer"
             >
               <Truck className="h-4 w-4" />
               <span>ডেলিভারি সম্পন্ন করুন</span>
@@ -760,6 +791,26 @@ export const OrderDetailPage: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Invoice & Money Receipt Modal */}
+      {order && (
+        <InvoiceModal
+          isOpen={showInvoiceModal}
+          onClose={() => setShowInvoiceModal(false)}
+          order={order}
+        />
+      )}
+
+      {/* Edit Order Modal */}
+      {order && (
+        <EditOrderModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          order={order}
+          staffList={staffList}
+          onOrderUpdated={loadOrder}
+        />
       )}
     </div>
   )

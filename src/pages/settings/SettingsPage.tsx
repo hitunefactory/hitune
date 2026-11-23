@@ -12,14 +12,37 @@ import {
   RefreshCw,
   Check,
   Globe,
+  FolderKanban,
+  Plus,
+  X,
+  Save,
 } from 'lucide-react'
 import { checkSupabaseHealth, isSupabaseConfigured, SupabaseHealth } from '../../integrations/supabase/client'
+import { dataService } from '../../services/dataService'
+import { OrderCategory, DynamicFormType } from '../../types/database'
 
 export const SettingsPage: React.FC = () => {
   const [health, setHealth] = useState<SupabaseHealth | null>(null)
   const [checking, setChecking] = useState(false)
   const [copiedMigration1, setCopiedMigration1] = useState(false)
   const [copiedMigration2, setCopiedMigration2] = useState(false)
+
+  // Categories
+  const [categories, setCategories] = useState<OrderCategory[]>([])
+  const [showCatModal, setShowCatModal] = useState(false)
+  const [catName, setCatName] = useState('')
+  const [catNameBn, setCatNameBn] = useState('')
+  const [catFormType, setCatFormType] = useState<DynamicFormType>('GENERAL')
+  const [savingCat, setSavingCat] = useState(false)
+
+  const loadCategories = async () => {
+    try {
+      const list = await dataService.getCategories()
+      setCategories(list)
+    } catch (err) {
+      console.error('Failed to load categories:', err)
+    }
+  }
 
   const runHealthCheck = async () => {
     setChecking(true)
@@ -33,7 +56,33 @@ export const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     runHealthCheck()
+    loadCategories()
   }, [])
+
+  const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!catName.trim() || !catNameBn.trim()) return
+
+    setSavingCat(true)
+    try {
+      const slug = catName.trim().toLowerCase().replace(/\s+/g, '-')
+      await dataService.createCategory({
+        name: catName.trim(),
+        name_bn: catNameBn.trim(),
+        slug,
+        dynamic_form_type: catFormType,
+      })
+      setShowCatModal(false)
+      setCatName('')
+      setCatNameBn('')
+      setCatFormType('GENERAL')
+      loadCategories()
+    } catch (err) {
+      console.error('Create category failed:', err)
+    } finally {
+      setSavingCat(false)
+    }
+  }
 
   const copyPath = (path: string, type: 1 | 2) => {
     navigator.clipboard.writeText(path)
@@ -180,6 +229,118 @@ export const SettingsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Order Categories Management */}
+      <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <FolderKanban className="h-4 w-4 text-purple-400" />
+            <div>
+              <h2 className="text-sm font-bold text-white">অর্ডার ক্যাটাগরি ব্যবস্থাপনা</h2>
+              <p className="text-[11px] text-slate-400">স্টুডিওর সক্রিয় অর্ডার ক্যাটাগরি ও ডাইনামিক ফর্ম ধরন</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowCatModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-md transition cursor-pointer"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>নতুন ক্যাটাগরি</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {categories.map((cat) => (
+            <div
+              key={cat.id}
+              className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800/80 space-y-1.5 hover:border-slate-700 transition"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-white truncate">{cat.name_bn}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">
+                  {cat.dynamic_form_type}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 truncate">{cat.name}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Add Category Modal */}
+      {showCatModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0f172a] border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-sm font-bold text-white">নতুন অর্ডার ক্যাটাগরি যোগ করুন</h3>
+              <button
+                onClick={() => setShowCatModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCategory} className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-300">বাংলা নাম *</label>
+                <input
+                  type="text"
+                  value={catNameBn}
+                  onChange={(e) => setCatNameBn(e.target.value)}
+                  placeholder="যেমন: ইউটিউব শর্টস অডিও"
+                  required
+                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-300">ইংরেজি নাম *</label>
+                <input
+                  type="text"
+                  value={catName}
+                  onChange={(e) => setCatName(e.target.value)}
+                  placeholder="e.g. YouTube Shorts Audio"
+                  required
+                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-300">ডাইনামিক ফর্ম ধরন</label>
+                <select
+                  value={catFormType}
+                  onChange={(e) => setCatFormType(e.target.value as DynamicFormType)}
+                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="GENERAL">সাধারণ ফর্ম (General)</option>
+                  <option value="ELECTION">নির্বাচনী প্রচারণা গান ফর্ম (Election)</option>
+                  <option value="WAZ">ওয়াজ মাহফিল মাইকিং ফর্ম (Waz)</option>
+                  <option value="SCHOOL">স্কুল / মাদ্রাসা ভর্তি ফর্ম (School)</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowCatModal(false)}
+                  className="px-4 py-2 bg-slate-900 text-slate-300 rounded-xl text-xs"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingCat}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold"
+                >
+                  {savingCat ? 'সংরক্ষণ হচ্ছে...' : 'ক্যাটাগরি যুক্ত করুন'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Studio Profile */}
       <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-4">
