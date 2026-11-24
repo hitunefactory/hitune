@@ -25,6 +25,7 @@ import {
   Receipt,
   Edit3,
   Printer,
+  Play,
 } from 'lucide-react'
 import { dataService } from '../../services/dataService'
 import { Order, TaskSubmission, Revision, OrderComment, Profile, PaymentMethod } from '../../types/database'
@@ -156,6 +157,63 @@ export const OrderDetailPage: React.FC = () => {
     }
   }
 
+  const handleStartAudio = async () => {
+    if (!order) return
+    try {
+      await dataService.updateOrderStatus(order.id, 'AUDIO_IN_PROGRESS', 'অডিও ডিজাইনার কাজ শুরু করেছেন।')
+      await loadOrder()
+    } catch (err) {
+      console.error('Start audio failed:', err)
+    }
+  }
+
+  const handleCompleteAudio = async () => {
+    if (!order) return
+    try {
+      const nextStatus = order.video_required ? 'VIDEO_PENDING' : 'READY_FOR_DELIVERY'
+      await dataService.updateOrderStatus(order.id, nextStatus, 'অডিও কাজ সম্পন্ন করা হয়েছে।')
+      dataService.createNotification({
+        user_id: user?.id || 'all',
+        title: `অর্ডার ${order.order_number} এর অডিও সম্পন্ন`,
+        message: order.video_required
+          ? 'অডিও সম্পন্ন হয়েছে, ভিডিওর কাজ শুরু করুন।'
+          : 'অডিও সম্পন্ন হয়েছে, অর্ডারটি ডেলিভারির জন্য প্রস্তুত।',
+        link: order.video_required ? '/video' : '/delivery',
+        type: 'SUCCESS',
+      })
+      await loadOrder()
+    } catch (err) {
+      console.error('Complete audio failed:', err)
+    }
+  }
+
+  const handleStartVideo = async () => {
+    if (!order) return
+    try {
+      await dataService.updateOrderStatus(order.id, 'VIDEO_IN_PROGRESS', 'ভিডিও এডিটর কাজ শুরু করেছেন।')
+      await loadOrder()
+    } catch (err) {
+      console.error('Start video failed:', err)
+    }
+  }
+
+  const handleCompleteVideo = async () => {
+    if (!order) return
+    try {
+      await dataService.updateOrderStatus(order.id, 'READY_FOR_DELIVERY', 'ভিডিও কাজ সম্পন্ন করা হয়েছে।')
+      dataService.createNotification({
+        user_id: user?.id || 'all',
+        title: `অর্ডার ${order.order_number} এর ভিডিও সম্পন্ন`,
+        message: 'ভিডিও কাজ সম্পন্ন হয়েছে, অর্ডারটি ডেলিভারির জন্য প্রস্তুত।',
+        link: '/delivery',
+        type: 'SUCCESS',
+      })
+      await loadOrder()
+    } catch (err) {
+      console.error('Complete video failed:', err)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center text-slate-400 text-xs">
@@ -242,7 +300,48 @@ export const OrderDetailPage: React.FC = () => {
             </button>
           )}
 
-          {order.overall_status === 'READY_FOR_DELIVERY' && hasRole(['SUPER_ADMIN', 'DELIVERY_MANAGER']) && (
+          {/* Workflow Action Buttons */}
+          {order.overall_status === 'AUDIO_PENDING' && hasRole(['SUPER_ADMIN', 'ORDER_MANAGER', 'AUDIO_DESIGNER']) && (
+            <button
+              onClick={handleStartAudio}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-md transition cursor-pointer"
+            >
+              <Play className="h-3.5 w-3.5 fill-current" />
+              <span>অডিও কাজ শুরু করুন</span>
+            </button>
+          )}
+
+          {['AUDIO_IN_PROGRESS', 'AUDIO_REVISION', 'AUDIO_QC'].includes(order.overall_status) && hasRole(['SUPER_ADMIN', 'ORDER_MANAGER', 'AUDIO_DESIGNER']) && (
+            <button
+              onClick={handleCompleteAudio}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-emerald-600/30 transition cursor-pointer"
+            >
+              <CheckCircle className="h-3.5 w-3.5" />
+              <span>অডিও সম্পন্ন</span>
+            </button>
+          )}
+
+          {order.overall_status === 'VIDEO_PENDING' && hasRole(['SUPER_ADMIN', 'ORDER_MANAGER', 'VIDEO_EDITOR']) && (
+            <button
+              onClick={handleStartVideo}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold rounded-xl shadow-md transition cursor-pointer"
+            >
+              <Play className="h-3.5 w-3.5 fill-current" />
+              <span>ভিডিও কাজ শুরু করুন</span>
+            </button>
+          )}
+
+          {['VIDEO_IN_PROGRESS', 'VIDEO_REVISION', 'VIDEO_QC'].includes(order.overall_status) && hasRole(['SUPER_ADMIN', 'ORDER_MANAGER', 'VIDEO_EDITOR']) && (
+            <button
+              onClick={handleCompleteVideo}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-emerald-600/30 transition cursor-pointer"
+            >
+              <CheckCircle className="h-3.5 w-3.5" />
+              <span>ভিডিও সম্পন্ন</span>
+            </button>
+          )}
+
+          {order.overall_status === 'READY_FOR_DELIVERY' && hasRole(['SUPER_ADMIN', 'DELIVERY_MANAGER', 'ORDER_MANAGER']) && (
             <button
               onClick={() => setShowDeliveryModal(true)}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold rounded-xl shadow-md transition animate-pulse cursor-pointer"

@@ -32,13 +32,9 @@ export const AudioDeptPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [scopeFilter, setScopeFilter] = useState<'ALL' | 'MINE'>('ALL')
 
-  // Submission Modal
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
-  const [fileName, setFileName] = useState('')
-  const [driveLink, setDriveLink] = useState('')
-  const [notes, setNotes] = useState('')
-  const [submissionType, setSubmissionType] = useState<'PREVIEW' | 'FINAL'>('FINAL')
-  const [submitting, setSubmitting] = useState(false)
+  // Confirmation Modal
+  const [confirmOrder, setConfirmOrder] = useState<Order | null>(null)
+  const [completing, setCompleting] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
 
   const loadAudioOrders = async (isSilent = false) => {
@@ -89,30 +85,26 @@ export const AudioDeptPage: React.FC = () => {
     }
   }
 
-  const handleSubmitWork = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedOrder || !user || !fileName.trim()) return
-
-    setSubmitting(true)
+  const handleCompleteAudioWork = async (order: Order) => {
+    setCompleting(true)
     try {
-      await dataService.submitWork({
-        order_id: selectedOrder.id,
-        department: 'AUDIO',
-        submitted_by: user.id,
-        submission_type: submissionType,
-        file_name: fileName.trim(),
-        google_drive_link: driveLink.trim() || undefined,
-        notes: notes.trim(),
+      const nextStatus: OrderOverallStatus = order.video_required ? 'VIDEO_PENDING' : 'READY_FOR_DELIVERY'
+      await dataService.updateOrderStatus(order.id, nextStatus, 'অডিও কাজ সম্পন্ন করা হয়েছে।')
+      dataService.createNotification({
+        user_id: user?.id || 'all',
+        title: `অর্ডার ${order.order_number} এর অডিও সম্পন্ন`,
+        message: order.video_required
+          ? 'অডিও সম্পন্ন হয়েছে, ভিডিওর কাজ শুরু করুন।'
+          : 'অডিও সম্পন্ন হয়েছে, অর্ডারটি ডেলিভারির জন্য প্রস্তুত।',
+        link: order.video_required ? '/video' : '/delivery',
+        type: 'SUCCESS',
       })
-      setSelectedOrder(null)
-      setFileName('')
-      setDriveLink('')
-      setNotes('')
+      setConfirmOrder(null)
       await loadAudioOrders()
     } catch (err) {
-      console.error('Submit audio failed:', err)
+      console.error('Complete audio failed:', err)
     } finally {
-      setSubmitting(false)
+      setCompleting(false)
     }
   }
 
@@ -127,13 +119,20 @@ export const AudioDeptPage: React.FC = () => {
     if (statusFilter === 'AUDIO_PENDING') {
       return o.overall_status === 'AUDIO_PENDING' || o.overall_status === 'NEW'
     }
+    if (statusFilter === 'AUDIO_IN_PROGRESS') {
+      return o.overall_status === 'AUDIO_IN_PROGRESS' || o.overall_status === 'AUDIO_REVISION'
+    }
+    if (statusFilter === 'COMPLETED') {
+      return ['VIDEO_PENDING', 'VIDEO_IN_PROGRESS', 'VIDEO_SUBMITTED', 'VIDEO_QC', 'READY_FOR_DELIVERY', 'DELIVERED', 'AUDIO_QC'].includes(o.overall_status)
+    }
     return o.overall_status === statusFilter
   })
 
   // Quick stats
-  const inProgressCount = orders.filter((o) => o.overall_status === 'AUDIO_IN_PROGRESS').length
+  const inProgressCount = orders.filter((o) => o.overall_status === 'AUDIO_IN_PROGRESS' || o.overall_status === 'AUDIO_REVISION').length
   const revisionCount = orders.filter((o) => o.overall_status === 'AUDIO_REVISION').length
   const pendingCount = orders.filter((o) => o.overall_status === 'AUDIO_PENDING' || o.overall_status === 'NEW').length
+  const completedCount = orders.filter((o) => ['VIDEO_PENDING', 'VIDEO_IN_PROGRESS', 'VIDEO_SUBMITTED', 'VIDEO_QC', 'READY_FOR_DELIVERY', 'DELIVERED', 'AUDIO_QC'].includes(o.overall_status)).length
   const myAssignedCount = user ? orders.filter((o) => o.assigned_audio_staff_id === user.id).length : 0
 
   return (
@@ -207,8 +206,7 @@ export const AudioDeptPage: React.FC = () => {
           { key: 'ALL', label: 'সকল অডিও কাজ', count: orders.length },
           { key: 'AUDIO_PENDING', label: 'পেন্ডিং / নতুন', count: pendingCount },
           { key: 'AUDIO_IN_PROGRESS', label: 'কাজ চলছে', count: inProgressCount },
-          { key: 'AUDIO_REVISION', label: 'রিভিশন প্রয়োজন', count: revisionCount },
-          { key: 'AUDIO_QC', label: 'কিউসি পর্যালোচনায়', count: orders.filter((o) => o.overall_status === 'AUDIO_QC').length },
+          { key: 'COMPLETED', label: 'সম্পন্ন কাজ', count: completedCount },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -330,12 +328,12 @@ export const AudioDeptPage: React.FC = () => {
 
                 {/* Actions */}
                 <div className="pt-2 border-t border-slate-800/80 flex items-center gap-2 flex-wrap">
-                  {/* Claim Button if not assigned or not assigned to me */}
+                  {/* Claim Button if not assigned */}
                   {!ord.assigned_audio_staff_id && (
                     <button
                       onClick={() => handleClaimOrder(ord.id)}
                       disabled={actionLoadingId === ord.id}
-                      className="flex-1 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md transition flex items-center justify-center gap-1.5"
+                      className="flex-1 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <UserCheck className="h-3.5 w-3.5" />
                       <span>{actionLoadingId === ord.id ? 'গ্রহণ হচ্ছে...' : 'কাজের দায়িত্ব নিন'}</span>
@@ -347,24 +345,30 @@ export const AudioDeptPage: React.FC = () => {
                     <button
                       onClick={() => handleStartWork(ord.id)}
                       disabled={actionLoadingId === ord.id}
-                      className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5"
+                      className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Play className="h-3.5 w-3.5 fill-current" />
                       <span>কাজ শুরু করুন</span>
                     </button>
                   )}
 
+                  {/* Complete Button if in progress or revision */}
                   {(ord.overall_status === 'AUDIO_IN_PROGRESS' || ord.overall_status === 'AUDIO_REVISION') && (
                     <button
-                      onClick={() => {
-                        setSelectedOrder(ord)
-                        setFileName(`${ord.order_number}_Audio_Final.mp3`)
-                      }}
-                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+                      onClick={() => setConfirmOrder(ord)}
+                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-lg shadow-emerald-600/30 cursor-pointer"
                     >
-                      <Upload className="h-3.5 w-3.5" />
-                      <span>অডিও সাবমিট করুন</span>
+                      <CheckCircle className="h-3.5 w-3.5" />
+                      <span>অডিও সম্পন্ন</span>
                     </button>
+                  )}
+
+                  {/* Already Completed Badge */}
+                  {['VIDEO_PENDING', 'VIDEO_IN_PROGRESS', 'VIDEO_SUBMITTED', 'VIDEO_QC', 'READY_FOR_DELIVERY', 'DELIVERED', 'AUDIO_QC'].includes(ord.overall_status) && (
+                    <span className="flex-1 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5">
+                      <CheckCircle className="h-3.5 w-3.5" />
+                      <span>অডিও সম্পন্ন</span>
+                    </span>
                   )}
 
                   <Link
@@ -380,83 +384,48 @@ export const AudioDeptPage: React.FC = () => {
         )}
       </div>
 
-      {/* SUBMISSION MODAL */}
-      {selectedOrder && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0f172a] border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <div>
-                <h3 className="font-bold text-white text-sm">অডিও ফাইল সাবমিশন</h3>
-                <p className="text-xs text-blue-400">{selectedOrder.order_number}: {selectedOrder.title}</p>
+      {/* 1-CLICK CONFIRMATION MODAL */}
+      {confirmOrder && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-[#0f172a] border border-slate-800 rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                <CheckCircle className="h-5 w-5" />
               </div>
-              <button onClick={() => setSelectedOrder(null)} className="text-slate-400 hover:text-white">✕</button>
+              <div>
+                <h3 className="font-bold text-white text-sm">অডিও কাজ কি সম্পন্ন?</h3>
+                <p className="text-[11px] text-blue-400 font-medium">{confirmOrder.order_number}</p>
+              </div>
             </div>
 
-            <form onSubmit={handleSubmitWork} className="space-y-3.5">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">ফাইল নাম (MP3 বা WAV)</label>
-                <input
-                  type="text"
-                  value={fileName}
-                  onChange={(e) => setFileName(e.target.value)}
-                  placeholder="HT-2026-0001_v1.mp3"
-                  required
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200"
-                />
-              </div>
+            <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800/80 space-y-1.5 text-xs">
+              <div className="font-semibold text-slate-200">{confirmOrder.title}</div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                {confirmOrder.video_required
+                  ? 'অডিও কাজ সম্পন্ন হলে এই কাজটি স্বয়ংক্রিয়ভাবে ভিডিও প্রোডাকশন বিভাগের কাছে চলে যাবে।'
+                  : 'অডিও কাজ সম্পন্ন হলে এই অর্ডারটি সরাসরি ডেলিভারির তালিকায় চলে যাবে।'}
+              </p>
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">গুগল ড্রাইভ লিংক (বড় ফাইল হলে)</label>
-                <input
-                  type="url"
-                  value={driveLink}
-                  onChange={(e) => setDriveLink(e.target.value)}
-                  placeholder="https://drive.google.com/file/d/..."
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">সাবমিশন ধরন</label>
-                <select
-                  value={submissionType}
-                  onChange={(e) => setSubmissionType(e.target.value as any)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200"
-                >
-                  <option value="FINAL">চূড়ান্ত মাস্টার ফাইল (Final Master)</option>
-                  <option value="PREVIEW">প্রিভিউ ফাইল (Preview Sample)</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">প্রোডাকশন নোট বা মন্তব্য</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                  placeholder="ভয়েস ডাবলিং ও ব্যাকগ্রাউন্ড মিউজিক ফাইনাল করা হয়েছে..."
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedOrder(null)}
-                  className="px-4 py-2 bg-slate-900 text-slate-300 rounded-xl text-xs"
-                >
-                  বাতিল
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5"
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                  <span>{submitting ? 'সাবমিট হচ্ছে...' : 'কিউসি পর্যালোচনায় পাঠান'}</span>
-                </button>
-              </div>
-            </form>
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setConfirmOrder(null)}
+                disabled={completing}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition cursor-pointer"
+              >
+                বাতিল
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCompleteAudioWork(confirmOrder)}
+                disabled={completing}
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/30 transition cursor-pointer"
+              >
+                <CheckCircle className="h-3.5 w-3.5" />
+                <span>{completing ? 'সংরক্ষণ হচ্ছে...' : 'হ্যাঁ, সম্পন্ন'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
