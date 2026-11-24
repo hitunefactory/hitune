@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AppLayout } from './components/layout/AppLayout'
 import { ProtectedRoute } from './components/layout/ProtectedRoute'
+import { ErrorBoundary } from './components/common/ErrorBoundary'
 
 // Pages
 import { LoginPage } from './pages/auth/LoginPage'
@@ -28,33 +29,35 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <BrowserRouter>
-            <Routes>
-              {/* Public Login Route */}
-              <Route path="/login" element={<LoginPage />} />
+          <ErrorBoundary>
+            <BrowserRouter>
+              <Routes>
+                {/* Public Login Route */}
+                <Route path="/login" element={<LoginPage />} />
 
-              {/* Protected Application Routes */}
-              <Route element={<ProtectedRoute />}>
-                <Route element={<AppLayout />}>
-                  <Route index element={<DashboardPage />} />
-                  <Route path="orders" element={<OrdersListPage />} />
-                  <Route path="orders/new" element={<CreateOrderPage />} />
-                  <Route path="orders/:id" element={<OrderDetailPage />} />
-                  <Route path="audio" element={<AudioDeptPage />} />
-                  <Route path="video" element={<VideoDeptPage />} />
-                  <Route path="quality-control" element={<QualityControlPage />} />
-                  <Route path="delivery" element={<DeliveryPage />} />
-                  <Route path="accounting" element={<AccountingPage />} />
-                  <Route path="reports" element={<ReportsPage />} />
-                  <Route path="staff" element={<StaffPage />} />
-                  <Route path="settings" element={<SettingsPage />} />
+                {/* Protected Application Routes */}
+                <Route element={<ProtectedRoute />}>
+                  <Route element={<AppLayout />}>
+                    <Route index element={<DashboardPage />} />
+                    <Route path="orders" element={<OrdersListPage />} />
+                    <Route path="orders/new" element={<CreateOrderPage />} />
+                    <Route path="orders/:id" element={<OrderDetailPage />} />
+                    <Route path="audio" element={<AudioDeptPage />} />
+                    <Route path="video" element={<VideoDeptPage />} />
+                    <Route path="quality-control" element={<QualityControlPage />} />
+                    <Route path="delivery" element={<DeliveryPage />} />
+                    <Route path="accounting" element={<AccountingPage />} />
+                    <Route path="reports" element={<ReportsPage />} />
+                    <Route path="staff" element={<StaffPage />} />
+                    <Route path="settings" element={<SettingsPage />} />
+                  </Route>
                 </Route>
-              </Route>
 
-              {/* Catch-all redirect */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </BrowserRouter>
+                {/* Catch-all redirect */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </BrowserRouter>
+          </ErrorBoundary>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

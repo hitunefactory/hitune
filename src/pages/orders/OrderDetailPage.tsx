@@ -417,109 +417,134 @@ export const OrderDetailPage: React.FC = () => {
       </div>
 
       {/* TAB 1: DETAILS */}
-      {activeTab === 'details' && (
-        <div className="space-y-6">
-          {/* Dynamic Category Specific Data */}
-          {order.details?.election_details && (
-            <div className="p-6 rounded-3xl bg-blue-950/20 border border-blue-500/30 space-y-3">
-              <h3 className="text-sm font-bold text-blue-400">নির্বাচনী তথ্য ও বিশেষ স্লোগান</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-                <div>
-                  <span className="text-slate-400 block">প্রার্থীর নাম:</span>
-                  <span className="font-semibold text-white">{order.details.election_details.candidate_name}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">পদবী:</span>
-                  <span className="font-semibold text-white">{order.details.election_details.candidate_position}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">নির্বাচনী এলাকা:</span>
-                  <span className="font-semibold text-white">{order.details.election_details.election_area}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">প্রতীক:</span>
-                  <span className="font-bold text-amber-400">{order.details.election_details.election_symbol}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">গানের সুরের ধরন:</span>
-                  <span className="font-semibold text-white">{order.details.election_details.song_style}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">ইউনিয়ন / ওয়ার্ড:</span>
-                  <span className="font-semibold text-white">{order.details.election_details.union_or_ward}</span>
-                </div>
-                <div className="sm:col-span-2 lg:col-span-3">
-                  <span className="text-slate-400 block">প্রচারণার স্লোগান:</span>
-                  <p className="font-medium text-slate-200 mt-0.5">{order.details.election_details.campaign_message}</p>
+      {activeTab === 'details' && (() => {
+        const detailsObj: any = Array.isArray(order.details) ? order.details[0] || {} : order.details || {}
+        const election = detailsObj.election_details && detailsObj.election_details.candidate_name ? detailsObj.election_details : null
+        const waz = detailsObj.waz_details && detailsObj.waz_details.event_name ? detailsObj.waz_details : null
+        const school = detailsObj.school_madrasa_details && detailsObj.school_madrasa_details.institution_name ? detailsObj.school_madrasa_details : null
+
+        return (
+          <div className="space-y-6">
+            {/* Dynamic Category Specific Data */}
+            {election && (
+              <div className="p-6 rounded-3xl bg-blue-950/20 border border-blue-500/30 space-y-3">
+                <h3 className="text-sm font-bold text-blue-400">নির্বাচনী তথ্য ও বিশেষ স্লোগান</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <span className="text-slate-400 block">প্রার্থীর নাম:</span>
+                    <span className="font-semibold text-white">{election.candidate_name}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">পদবী:</span>
+                    <span className="font-semibold text-white">{election.candidate_position}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">নির্বাচনী এলাকা:</span>
+                    <span className="font-semibold text-white">{election.election_area}</span>
+                  </div>
+                  {election.election_symbol && (
+                    <div>
+                      <span className="text-slate-400 block">প্রতীক:</span>
+                      <span className="font-bold text-amber-400">{election.election_symbol}</span>
+                    </div>
+                  )}
+                  {election.song_style && (
+                    <div>
+                      <span className="text-slate-400 block">গানের সুরের ধরন:</span>
+                      <span className="font-semibold text-white">{election.song_style}</span>
+                    </div>
+                  )}
+                  {election.union_or_ward && (
+                    <div>
+                      <span className="text-slate-400 block">ইউনিয়ন / ওয়ার্ড:</span>
+                      <span className="font-semibold text-white">{election.union_or_ward}</span>
+                    </div>
+                  )}
+                  {election.campaign_message && (
+                    <div className="sm:col-span-2 lg:col-span-3">
+                      <span className="text-slate-400 block">প্রচারণার স্লোগান:</span>
+                      <p className="font-medium text-slate-200 mt-0.5">{election.campaign_message}</p>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {order.details?.waz_details && (
-            <div className="p-6 rounded-3xl bg-emerald-950/20 border border-emerald-500/30 space-y-3">
-              <h3 className="text-sm font-bold text-emerald-400">ওয়াজ মাহফিলের মাইকিং বিবরণ</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-                <div>
-                  <span className="text-slate-400 block">মাহফিলের নাম:</span>
-                  <span className="font-semibold text-white">{order.details.waz_details.event_name}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">আয়োজক:</span>
-                  <span className="font-semibold text-white">{order.details.waz_details.institution_name}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">স্থান:</span>
-                  <span className="font-semibold text-white">{order.details.waz_details.event_location}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">তারিখ ও সময়:</span>
-                  <span className="font-semibold text-amber-400">{order.details.waz_details.event_date_time}</span>
-                </div>
-                <div className="sm:col-span-2">
-                  <span className="text-slate-400 block">বক্তাগণ:</span>
-                  <span className="font-semibold text-white">{order.details.waz_details.speakers.join(', ')}</span>
+            {waz && (
+              <div className="p-6 rounded-3xl bg-emerald-950/20 border border-emerald-500/30 space-y-3">
+                <h3 className="text-sm font-bold text-emerald-400">ওয়াজ মাহফিলের মাইকিং বিবরণ</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <span className="text-slate-400 block">মাহফিলের নাম:</span>
+                    <span className="font-semibold text-white">{waz.event_name}</span>
+                  </div>
+                  {waz.institution_name && (
+                    <div>
+                      <span className="text-slate-400 block">আয়োজক:</span>
+                      <span className="font-semibold text-white">{waz.institution_name}</span>
+                    </div>
+                  )}
+                  {waz.event_location && (
+                    <div>
+                      <span className="text-slate-400 block">স্থান:</span>
+                      <span className="font-semibold text-white">{waz.event_location}</span>
+                    </div>
+                  )}
+                  {waz.event_date_time && (
+                    <div>
+                      <span className="text-slate-400 block">তারিখ ও সময়:</span>
+                      <span className="font-semibold text-amber-400">{waz.event_date_time}</span>
+                    </div>
+                  )}
+                  <div className="sm:col-span-2">
+                    <span className="text-slate-400 block">বক্তাগণ:</span>
+                    <span className="font-semibold text-white">
+                      {Array.isArray(waz.speakers) && waz.speakers.length > 0
+                        ? waz.speakers.join(', ')
+                        : (typeof waz.speakers === 'string' ? waz.speakers : '—')}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {order.details?.school_madrasa_details && (
-            <div className="p-6 rounded-3xl bg-amber-950/20 border border-amber-500/30 space-y-3">
-              <h3 className="text-sm font-bold text-amber-400">স্কুল / মাদ্রাসা ভর্তি বিবরণ</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div>
-                  <span className="text-slate-400 block">প্রতিষ্ঠানের নাম:</span>
-                  <span className="font-semibold text-white">{order.details.school_madrasa_details.institution_name}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">সেশন ও শ্রেণি:</span>
-                  <span className="font-semibold text-white">
-                    {order.details.school_madrasa_details.admission_session} ({order.details.school_madrasa_details.available_classes})
-                  </span>
+            {school && (
+              <div className="p-6 rounded-3xl bg-amber-950/20 border border-amber-500/30 space-y-3">
+                <h3 className="text-sm font-bold text-amber-400">স্কুল / মাদ্রাসা ভর্তি বিবরণ</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-slate-400 block">প্রতিষ্ঠানের নাম:</span>
+                    <span className="font-semibold text-white">{school.institution_name}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">সেশন ও শ্রেণি:</span>
+                    <span className="font-semibold text-white">
+                      {school.admission_session} {school.available_classes ? `(${school.available_classes})` : ''}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* General Description & Instructions */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-2">
-              <span className="text-xs font-bold text-white block">কাজের বিস্তারিত বর্ণনা</span>
-              <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
-                {order.description || 'কোন অতিরিক্ত বিবরণ দেওয়া হয়নি।'}
-              </p>
-            </div>
+            {/* General Description & Instructions */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-2">
+                <span className="text-xs font-bold text-white block">কাজের বিস্তারিত বর্ণনা</span>
+                <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+                  {order.description || 'কোন অতিরিক্ত বিবরণ দেওয়া হয়নি।'}
+                </p>
+              </div>
 
-            <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-2">
-              <span className="text-xs font-bold text-blue-400 block">স্টুডিও অভ্যন্তরীণ নির্দেশনা</span>
-              <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
-                {order.internal_instructions || 'কোন অভ্যন্তরীণ নির্দেশনা দেওয়া হয়নি।'}
-              </p>
+              <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-2">
+                <span className="text-xs font-bold text-blue-400 block">স্টুডিও অভ্যন্তরীণ নির্দেশনা</span>
+                <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+                  {order.internal_instructions || 'কোন অভ্যন্তরীণ নির্দেশনা দেওয়া হয়নি।'}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* TAB 2: SUBMISSIONS & QC */}
       {activeTab === 'submissions' && (
