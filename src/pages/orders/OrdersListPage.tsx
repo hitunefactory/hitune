@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   FolderKanban,
@@ -17,7 +17,7 @@ import { StatusBadge, PaymentBadge } from '../../components/ui/StatusBadge'
 import { dataService } from '../../services/dataService'
 import { Order, OrderCategory, OrderOverallStatus, Profile } from '../../types/database'
 import { STATUS_MAP_BN } from '../../lib/constants'
-import { formatBengaliNumber, formatBengaliDate, formatCurrency } from '../../lib/utils'
+import { formatBengaliNumber, formatBengaliDate, formatCurrency, getLocalDateString } from '../../lib/utils'
 import { useAuth } from '../../contexts/AuthContext'
 import { EditOrderModal } from '../../components/orders/EditOrderModal'
 
@@ -41,6 +41,8 @@ export const OrdersListPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState(initialQuery)
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL')
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL')
+  const [selectedDateFilter, setSelectedDateFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'DAY_BEFORE' | 'CUSTOM'>('ALL')
+  const [customDate, setCustomDate] = useState<string>(() => getLocalDateString(new Date()))
 
   const loadData = async (isSilent = false) => {
     if (!isSilent) setLoading(true)
@@ -84,6 +86,21 @@ export const OrdersListPage: React.FC = () => {
     return () => window.removeEventListener('hitune:data-synced', onSync)
   }, [])
 
+  const targetDateStr = useMemo(() => {
+    const d = new Date()
+    if (selectedDateFilter === 'TODAY') return getLocalDateString(d)
+    if (selectedDateFilter === 'YESTERDAY') {
+      d.setDate(d.getDate() - 1)
+      return getLocalDateString(d)
+    }
+    if (selectedDateFilter === 'DAY_BEFORE') {
+      d.setDate(d.getDate() - 2)
+      return getLocalDateString(d)
+    }
+    if (selectedDateFilter === 'CUSTOM') return customDate
+    return null
+  }, [selectedDateFilter, customDate])
+
   // Filtered orders
   const filteredOrders = orders.filter((order) => {
     const term = searchTerm.toLowerCase().trim()
@@ -103,7 +120,10 @@ export const OrdersListPage: React.FC = () => {
     const matchesStatus =
       selectedStatus === 'ALL' || order.overall_status === selectedStatus
 
-    return matchesSearch && matchesCategory && matchesStatus
+    const matchesDate =
+      !targetDateStr || getLocalDateString(order.created_at) === targetDateStr
+
+    return matchesSearch && matchesCategory && matchesStatus && matchesDate
   })
 
   return (
@@ -131,7 +151,7 @@ export const OrdersListPage: React.FC = () => {
 
       {/* Filter and Search Controls */}
       <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Search Box */}
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
@@ -174,6 +194,29 @@ export const OrdersListPage: React.FC = () => {
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Date Filter */}
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedDateFilter}
+              onChange={(e) => setSelectedDateFilter(e.target.value as any)}
+              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="ALL">সকল সময় (তারিখ)</option>
+              <option value="TODAY">আজকের অর্ডার</option>
+              <option value="YESTERDAY">গতকালের অর্ডার</option>
+              <option value="DAY_BEFORE">গত পরশুর অর্ডার</option>
+              <option value="CUSTOM">নির্দিষ্ট তারিখ...</option>
+            </select>
+            {selectedDateFilter === 'CUSTOM' && (
+              <input
+                type="date"
+                value={customDate}
+                onChange={(e) => setCustomDate(e.target.value)}
+                className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shrink-0"
+              />
+            )}
           </div>
         </div>
       </div>

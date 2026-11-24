@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
   FolderKanban,
@@ -51,10 +51,22 @@ export const DashboardPage: React.FC = () => {
   const [allPayments, setAllPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Date Filter State (Default: TODAY in local timezone)
+  // Date Filter State (Default: TODAY in local timezone, collapsed into clean dropdown)
   const [dateFilter, setDateFilter] = useState<DateFilterType>('TODAY')
   const [customDate, setCustomDate] = useState<string>(() => getLocalDateString(new Date()))
+  const [showDateFilter, setShowDateFilter] = useState(false)
   const [showLifetimeSection, setShowLifetimeSection] = useState(false)
+  const filterMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterMenuRef.current && !filterMenuRef.current.contains(event.target as Node)) {
+        setShowDateFilter(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const loadDashboardData = async (isSilent = false) => {
     // Only set loading true on initial page load if no data exists yet
@@ -208,6 +220,14 @@ export const DashboardPage: React.FC = () => {
     return 'সার্বিক স্টুডিও রিপোর্ট (লাইফটাইম সর্বমোট)'
   }, [dateFilter, customDate, targetDateStr])
 
+  const shortDateLabel = useMemo(() => {
+    if (dateFilter === 'TODAY') return 'আজকের রিপোর্ট'
+    if (dateFilter === 'YESTERDAY') return 'গতকাল'
+    if (dateFilter === 'DAY_BEFORE') return 'গত পরশু'
+    if (dateFilter === 'CUSTOM') return formatBengaliDate(customDate)
+    return 'সকল সময়'
+  }, [dateFilter, customDate])
+
   if (loading || !lifetimeStats) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
@@ -259,88 +279,86 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Date Filter Toolbar (Today / Yesterday / Day Before / Custom Date / All Time) */}
-      <div className="p-4 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-blue-400" />
-            <div>
-              <h2 className="text-sm font-bold text-white">{dateDisplayTitle}</h2>
-              <p className="text-[11px] text-slate-400">তারিখ নির্বাচন করে নির্দিষ্ট দিনের অর্ডার ও আয় দেখুন</p>
-            </div>
-          </div>
-
-          {/* Quick Date Pills */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <button
-              onClick={() => setDateFilter('TODAY')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition ${
-                dateFilter === 'TODAY'
-                  ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30'
-                  : 'bg-slate-950/70 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
-              }`}
-            >
-              আজ
-            </button>
-            <button
-              onClick={() => setDateFilter('YESTERDAY')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition ${
-                dateFilter === 'YESTERDAY'
-                  ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30'
-                  : 'bg-slate-950/70 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
-              }`}
-            >
-              গতকাল
-            </button>
-            <button
-              onClick={() => setDateFilter('DAY_BEFORE')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition ${
-                dateFilter === 'DAY_BEFORE'
-                  ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30'
-                  : 'bg-slate-950/70 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
-              }`}
-            >
-              গত পরশু
-            </button>
-
-            {/* Custom Date Picker Inline */}
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-950/70 border border-slate-800">
-              <Calendar className="h-3.5 w-3.5 text-blue-400" />
-              <input
-                type="date"
-                value={customDate}
-                onChange={(e) => {
-                  setCustomDate(e.target.value)
-                  setDateFilter('CUSTOM')
-                }}
-                className="bg-transparent text-xs text-slate-200 focus:outline-none cursor-pointer"
-              />
-            </div>
-
-            <button
-              onClick={() => setDateFilter('ALL')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition ${
-                dateFilter === 'ALL'
-                  ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30'
-                  : 'bg-slate-950/70 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
-              }`}
-            >
-              সকল সময়
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Daily/Filtered Production Status Metric Grid */}
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
           <h2 className="text-base font-bold text-white flex items-center gap-2">
             <Layers className="h-4 w-4 text-blue-400" />
-            <span>{dateFilter === 'ALL' ? 'সার্বিক অর্ডার স্থিতি' : 'নির্বাচিত তারিখের স্থিতি ও কাজ'}</span>
+            <span>{dateFilter === 'ALL' ? 'সার্বিক অর্ডার স্থিতি' : dateDisplayTitle}</span>
           </h2>
-          <span className="text-xs text-blue-400/90 font-medium">
-            মোট অর্ডার: {formatBengaliNumber(currentStats.totalOrders)} টি
-          </span>
+
+          <div className="flex items-center gap-2.5">
+            <span className="text-xs text-blue-400/90 font-medium">
+              মোট অর্ডার: {formatBengaliNumber(currentStats.totalOrders)} টি
+            </span>
+
+            {/* Compact Date Filter Dropdown Inside Header */}
+            <div className="relative" ref={filterMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowDateFilter(!showDateFilter)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-200 transition cursor-pointer shadow-sm"
+                title="তারিখ ফিল্টার করুন"
+              >
+                <Filter className="h-3.5 w-3.5 text-blue-400" />
+                <span>{shortDateLabel}</span>
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${showDateFilter ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showDateFilter && (
+                <div className="absolute right-0 mt-2 w-64 p-3 rounded-2xl bg-[#0f172a] border border-slate-700/80 shadow-2xl z-30 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <CalendarDays className="h-3.5 w-3.5 text-blue-400" />
+                      তারিখ অনুযায়ী ফিল্টার
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      { key: 'TODAY', label: 'আজ' },
+                      { key: 'YESTERDAY', label: 'গতকাল' },
+                      { key: 'DAY_BEFORE', label: 'গত পরশু' },
+                      { key: 'ALL', label: 'সকল সময়' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => {
+                          setDateFilter(opt.key as DateFilterType)
+                          setShowDateFilter(false)
+                        }}
+                        className={`px-2.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer text-center ${
+                          dateFilter === opt.key
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                            : 'bg-slate-900/90 text-slate-300 hover:bg-slate-800 border border-slate-800'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="pt-1.5 border-t border-slate-800 space-y-1">
+                    <label className="text-[11px] text-slate-400 block">নির্দিষ্ট তারিখ বাছাই করুন:</label>
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800">
+                      <Calendar className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                      <input
+                        type="date"
+                        value={customDate}
+                        onChange={(e) => {
+                          setCustomDate(e.target.value)
+                          setDateFilter('CUSTOM')
+                          setShowDateFilter(false)
+                        }}
+                        className="w-full bg-transparent text-xs text-slate-200 focus:outline-none cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3.5">
@@ -434,15 +452,29 @@ export const DashboardPage: React.FC = () => {
 
         {filteredOrders.length === 0 ? (
           <div className="py-12 px-4 text-center text-slate-400 text-xs">
-            <div className="space-y-1">
+            <div className="space-y-3">
               <p className="text-slate-300 font-medium">
                 {dateFilter === 'TODAY'
                   ? 'আজকে এখনও কোনো নতুন অর্ডার এন্ট্রি করা হয়নি।'
                   : 'নির্বাচিত এই তারিখে কোনো অর্ডার পাওয়া যায়নি।'}
               </p>
-              <p className="text-[11px] text-slate-500">
-                উপরে "গতকাল", "গত পরশু" বা তারিখ পরিবর্তন করে পূর্বের অর্ডার দেখতে পারেন অথবা "+ নতুন অর্ডার গ্রহণ" বাটনে ক্লিক করুন।
-              </p>
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                {dateFilter !== 'ALL' && (
+                  <button
+                    type="button"
+                    onClick={() => setDateFilter('ALL')}
+                    className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold transition cursor-pointer"
+                  >
+                    সকল সময়ের অর্ডার দেখুন
+                  </button>
+                )}
+                <Link
+                  to="/orders/new"
+                  className="px-3.5 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 font-semibold transition"
+                >
+                  + নতুন অর্ডার গ্রহণ
+                </Link>
+              </div>
             </div>
           </div>
         ) : (
