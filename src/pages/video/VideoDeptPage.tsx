@@ -38,8 +38,8 @@ export const VideoDeptPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
 
-  const loadVideoOrders = async () => {
-    setLoading(true)
+  const loadVideoOrders = async (isSilent = false) => {
+    if (!isSilent) setLoading(true)
     try {
       const allOrders = await dataService.getOrders()
       // Filter for orders requiring video
@@ -48,14 +48,14 @@ export const VideoDeptPage: React.FC = () => {
     } catch (err) {
       console.error('Failed to load video orders:', err)
     } finally {
-      setLoading(false)
+      if (!isSilent) setLoading(false)
     }
   }
 
   useEffect(() => {
     loadVideoOrders()
     const onSync = () => {
-      loadVideoOrders()
+      loadVideoOrders(true)
     }
     window.addEventListener('hitune:data-synced', onSync)
     return () => window.removeEventListener('hitune:data-synced', onSync)

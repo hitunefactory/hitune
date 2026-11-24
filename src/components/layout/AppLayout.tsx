@@ -11,28 +11,23 @@ export const AppLayout: React.FC = () => {
 
   // 100% AUTOMATIC REAL-TIME CLOUD SYNC ENGINE
   useEffect(() => {
-    // 1. Initial background sync on app load
+    // 1. Initial background sync on app load (runs once silently)
     dataService.syncAllToCloud().then(() => {
       window.dispatchEvent(new CustomEvent('hitune:data-synced'))
     }).catch(() => {})
 
-    // 2. Real-time WebSocket connection to Supabase
+    // 2. Real-time WebSocket connection to Supabase (only fires when database data actually changes)
     const unsubscribe = dataService.initRealtimeSubscription(() => {
       window.dispatchEvent(new CustomEvent('hitune:data-synced'))
     })
 
-    // 3. Automated background heartbeat every 4 seconds (guarantees cross-device sync)
-    const heartbeatTimer = setInterval(async () => {
-      if (document.visibilityState === 'visible') {
-        try {
-          await dataService.getOrders()
-          window.dispatchEvent(new CustomEvent('hitune:data-synced'))
-        } catch {}
-      }
-    }, 4000)
-
-    // 4. Instant sync on tab focus or screen unlock (Mobile / PC)
+    // 3. Sync on tab focus or screen unlock (Mobile / PC) - throttled to max once every 30 seconds
+    let lastFocusSync = 0
     const onFocus = () => {
+      const now = Date.now()
+      if (now - lastFocusSync < 30000) return
+      lastFocusSync = now
+
       dataService.getOrders().then(() => {
         window.dispatchEvent(new CustomEvent('hitune:data-synced'))
       }).catch(() => {})
@@ -49,7 +44,6 @@ export const AppLayout: React.FC = () => {
 
     return () => {
       unsubscribe()
-      clearInterval(heartbeatTimer)
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }

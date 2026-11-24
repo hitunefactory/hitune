@@ -31,8 +31,8 @@ export const OrdersListPage: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL')
   const [selectedPriority, setSelectedPriority] = useState<string>('ALL')
 
-  const loadData = async () => {
-    setLoading(true)
+  const loadData = async (isSilent = false) => {
+    if (!isSilent) setLoading(true)
     try {
       const [orderList, catList] = await Promise.all([
         dataService.getOrders(),
@@ -43,14 +43,14 @@ export const OrdersListPage: React.FC = () => {
     } catch (err) {
       console.error('Failed to load orders list:', err)
     } finally {
-      setLoading(false)
+      if (!isSilent) setLoading(false)
     }
   }
 
   useEffect(() => {
     loadData()
     const onSync = () => {
-      loadData()
+      loadData(true)
     }
     window.addEventListener('hitune:data-synced', onSync)
     return () => window.removeEventListener('hitune:data-synced', onSync)

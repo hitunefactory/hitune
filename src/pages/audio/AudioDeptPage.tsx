@@ -41,8 +41,8 @@ export const AudioDeptPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
 
-  const loadAudioOrders = async () => {
-    setLoading(true)
+  const loadAudioOrders = async (isSilent = false) => {
+    if (!isSilent) setLoading(true)
     try {
       const allOrders = await dataService.getOrders()
       // Filter for orders requiring audio
@@ -51,14 +51,14 @@ export const AudioDeptPage: React.FC = () => {
     } catch (err) {
       console.error('Failed to load audio orders:', err)
     } finally {
-      setLoading(false)
+      if (!isSilent) setLoading(false)
     }
   }
 
   useEffect(() => {
     loadAudioOrders()
     const onSync = () => {
-      loadAudioOrders()
+      loadAudioOrders(true)
     }
     window.addEventListener('hitune:data-synced', onSync)
     return () => window.removeEventListener('hitune:data-synced', onSync)
