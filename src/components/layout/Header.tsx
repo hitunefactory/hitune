@@ -26,6 +26,7 @@ import { ROLE_LABELS_BN } from '../../lib/constants'
 import { cn, formatBengaliNumber } from '../../lib/utils'
 import { UserAvatar } from '../ui/UserAvatar'
 import { ProfileModal } from '../profile/ProfileModal'
+import { InstallAppButton } from '../pwa/InstallAppButton'
 
 interface HeaderProps {
   setMobileOpen: (open: boolean) => void
@@ -220,6 +221,8 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
 
       {/* Right: Actions, Notifications, Role Switcher, Profile */}
       <div ref={actionsMenuRef} className="flex items-center gap-1.5 sm:gap-2.5">
+        <InstallAppButton variant="header" />
+
         {/* Quick Add Order Button - visible on mobile as icon, with label on sm */}
         {hasRole(['SUPER_ADMIN', 'ORDER_MANAGER']) && (
           <Link

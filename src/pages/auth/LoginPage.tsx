@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext'
 import { UserRole } from '../../types/database'
 import { ROLE_LABELS_BN } from '../../lib/constants'
+import { InstallAppButton } from '../../components/pwa/InstallAppButton'
 
 export const LoginPage: React.FC = () => {
   const { login, register } = useAuth()
@@ -380,8 +381,9 @@ export const LoginPage: React.FC = () => {
           )}
         </div>
 
-        <div className="text-center text-xs text-slate-500">
-          HI TUNE STUDIO &copy; ২০২৬ | জামালপুর, বাংলাদেশ
+        <div className="flex flex-col items-center gap-3 text-center text-xs text-slate-500">
+          <InstallAppButton variant="login" />
+          <div>HI TUNE STUDIO &copy; ২০২৬ | জামালপুর, বাংলাদেশ</div>
         </div>
       </div>
     </div>

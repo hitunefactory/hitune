@@ -25,6 +25,7 @@ import { ROLE_LABELS_BN } from '../../lib/constants'
 import { cn } from '../../lib/utils'
 import { UserAvatar } from '../ui/UserAvatar'
 import { UserRole } from '../../types/database'
+import { InstallAppButton } from '../pwa/InstallAppButton'
 
 interface SidebarProps {
   collapsed: boolean
@@ -256,7 +257,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
 
         {/* Bottom Studio Location & Staff Avatar */}
-        <div className="p-3 border-t border-slate-800 bg-[#070b14]/70">
+        <div className="p-3 border-t border-slate-800 bg-[#070b14]/70 space-y-2.5">
+          {!collapsed && (
+            <InstallAppButton variant="sidebar" onAction={() => setMobileOpen(false)} />
+          )}
           {!collapsed ? (
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5 overflow-hidden">
