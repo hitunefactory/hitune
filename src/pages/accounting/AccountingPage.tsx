@@ -17,7 +17,7 @@ import {
 import { dataService } from '../../services/dataService'
 import { Payment, Expense, ExpenseCategory, Order, PaymentMethod } from '../../types/database'
 import { useAuth } from '../../contexts/AuthContext'
-import { formatBengaliDate, formatBengaliNumber, formatCurrency } from '../../lib/utils'
+import { formatBengaliDate, formatBengaliNumber, formatCurrency, getLocalDateString } from '../../lib/utils'
 import { PAYMENT_METHOD_MAP_BN } from '../../lib/constants'
 
 export const AccountingPage: React.FC = () => {
@@ -45,7 +45,7 @@ export const AccountingPage: React.FC = () => {
   const [expAmount, setExpAmount] = useState<number>(0)
   const [expCatId, setExpCatId] = useState('')
   const [expMethod, setExpMethod] = useState<PaymentMethod>('CASH')
-  const [expDate, setExpDate] = useState(new Date().toISOString().split('T')[0])
+  const [expDate, setExpDate] = useState(() => getLocalDateString(new Date()))
   const [expNotes, setExpNotes] = useState('')
 
   // Custom Category Modal

@@ -23,7 +23,7 @@ import {
 import { dataService } from '../../services/dataService'
 import { OrderCategory, Profile, OrderPriority } from '../../types/database'
 import { useAuth } from '../../contexts/AuthContext'
-import { formatBengaliNumber, formatCurrency } from '../../lib/utils'
+import { formatBengaliNumber, formatCurrency, getLocalDateString } from '../../lib/utils'
 
 type PrimaryOrderType = 'ELECTION' | 'ADMISSION' | 'WAZ' | 'CUSTOM'
 type WorkFormat = 'AUDIO_ONLY' | 'AUDIO_VIDEO'
@@ -53,7 +53,7 @@ export const CreateOrderPage: React.FC = () => {
   const [deliveryDate, setDeliveryDate] = useState(() => {
     const d = new Date()
     d.setDate(d.getDate() + 2)
-    return d.toISOString().split('T')[0]
+    return getLocalDateString(d)
   })
   const [priority, setPriority] = useState<OrderPriority>('NORMAL')
 

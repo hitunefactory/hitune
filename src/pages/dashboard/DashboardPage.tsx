@@ -28,7 +28,7 @@ import { StatCard } from '../../components/dashboard/StatCard'
 import { StatusBadge, PriorityBadge } from '../../components/ui/StatusBadge'
 import { dataService } from '../../services/dataService'
 import { Order, Payment } from '../../types/database'
-import { formatBengaliNumber, formatBengaliDate, formatCurrency } from '../../lib/utils'
+import { formatBengaliNumber, formatBengaliDate, formatCurrency, getLocalDateString } from '../../lib/utils'
 import {
   BarChart,
   Bar,
@@ -50,9 +50,9 @@ export const DashboardPage: React.FC = () => {
   const [allPayments, setAllPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Date Filter State (Default: TODAY)
+  // Date Filter State (Default: TODAY in local timezone)
   const [dateFilter, setDateFilter] = useState<DateFilterType>('TODAY')
-  const [customDate, setCustomDate] = useState<string>(() => new Date().toISOString().split('T')[0])
+  const [customDate, setCustomDate] = useState<string>(() => getLocalDateString(new Date()))
   const [showLifetimeSection, setShowLifetimeSection] = useState(false)
 
   const loadDashboardData = async (isSilent = false) => {
@@ -92,19 +92,19 @@ export const DashboardPage: React.FC = () => {
     return () => window.removeEventListener('hitune:data-synced', handleSync)
   }, [])
 
-  // Calculate target date string
+  // Calculate target date string in local timezone (YYYY-MM-DD)
   const targetDateStr = useMemo(() => {
     const d = new Date()
     if (dateFilter === 'TODAY') {
-      return d.toISOString().split('T')[0]
+      return getLocalDateString(d)
     }
     if (dateFilter === 'YESTERDAY') {
       d.setDate(d.getDate() - 1)
-      return d.toISOString().split('T')[0]
+      return getLocalDateString(d)
     }
     if (dateFilter === 'DAY_BEFORE') {
       d.setDate(d.getDate() - 2)
-      return d.toISOString().split('T')[0]
+      return getLocalDateString(d)
     }
     if (dateFilter === 'CUSTOM') {
       return customDate
@@ -112,16 +112,16 @@ export const DashboardPage: React.FC = () => {
     return null // 'ALL'
   }, [dateFilter, customDate])
 
-  // Filter orders according to date filter
+  // Filter orders according to local date
   const filteredOrders = useMemo(() => {
     if (!targetDateStr) return allOrders
-    return allOrders.filter((o) => o.created_at && o.created_at.startsWith(targetDateStr))
+    return allOrders.filter((o) => getLocalDateString(o.created_at) === targetDateStr)
   }, [allOrders, targetDateStr])
 
-  // Filter payments according to date filter
+  // Filter payments according to local date
   const filteredPayments = useMemo(() => {
     if (!targetDateStr) return allPayments
-    return allPayments.filter((p) => p.payment_date && p.payment_date.startsWith(targetDateStr))
+    return allPayments.filter((p) => getLocalDateString(p.payment_date) === targetDateStr)
   }, [allPayments, targetDateStr])
 
   // Dynamic daily/filtered statistics
@@ -193,23 +193,19 @@ export const DashboardPage: React.FC = () => {
   // Bengali Date Display Label
   const dateDisplayTitle = useMemo(() => {
     if (dateFilter === 'TODAY') {
-      return `আজকের রিপোর্ট — ${formatBengaliDate(new Date().toISOString())}`
+      return `আজকের রিপোর্ট — ${formatBengaliDate(targetDateStr)}`
     }
     if (dateFilter === 'YESTERDAY') {
-      const y = new Date()
-      y.setDate(y.getDate() - 1)
-      return `গতকালের রিপোর্ট — ${formatBengaliDate(y.toISOString())}`
+      return `গতকালের রিপোর্ট — ${formatBengaliDate(targetDateStr)}`
     }
     if (dateFilter === 'DAY_BEFORE') {
-      const db = new Date()
-      db.setDate(db.getDate() - 2)
-      return `গত পরশুর রিপোর্ট — ${formatBengaliDate(db.toISOString())}`
+      return `গত পরশুর রিপোর্ট — ${formatBengaliDate(targetDateStr)}`
     }
     if (dateFilter === 'CUSTOM') {
-      return `নির্দিষ্ট তারিখের রিপোর্ট — ${formatBengaliDate(new Date(customDate).toISOString())}`
+      return `নির্দিষ্ট তারিখের রিপোর্ট — ${formatBengaliDate(customDate)}`
     }
     return 'সার্বিক স্টুডিও রিপোর্ট (লাইফটাইম সর্বমোট)'
-  }, [dateFilter, customDate])
+  }, [dateFilter, customDate, targetDateStr])
 
   if (loading || !lifetimeStats) {
     return (

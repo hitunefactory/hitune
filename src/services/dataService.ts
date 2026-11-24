@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured, checkSupabaseHealth } from '../integrations/supabase/client'
+import { getLocalDateString } from '../lib/utils'
 import {
   Order,
   Profile,
@@ -191,6 +192,7 @@ class DataService {
       assigned_audio_staff_id: safeAudioId,
       assigned_video_staff_id: safeVideoId,
       created_by: safeCreatedBy,
+      created_at: order.created_at || new Date().toISOString(),
     }
 
     if (order.order_number && order.order_number.startsWith('HT-')) {
@@ -1251,7 +1253,7 @@ class DataService {
       category: cat || null,
       title: payload.title,
       amount: Number(payload.amount),
-      expense_date: payload.expense_date || new Date().toISOString().split('T')[0],
+      expense_date: payload.expense_date || getLocalDateString(new Date()),
       payment_method: payload.payment_method,
       reference_no: payload.reference_no || null,
       notes: payload.notes || null,
@@ -1345,8 +1347,8 @@ class DataService {
     const delivered = orders.filter((o) => o.overall_status === 'DELIVERED').length
     const cancelled = orders.filter((o) => o.overall_status === 'CANCELLED').length
 
-    const todayStr = new Date().toISOString().split('T')[0]
-    const todayOrders = orders.filter((o) => o.created_at && o.created_at.startsWith(todayStr))
+    const todayStr = getLocalDateString(new Date())
+    const todayOrders = orders.filter((o) => o.created_at && getLocalDateString(o.created_at) === todayStr)
 
     const totalReceivedPayments = payments.reduce((sum, p) => sum + Number(p.amount), 0)
     const totalOutstandingBalances = orders.reduce((sum, o) => sum + Number(o.due_amount || 0), 0)
