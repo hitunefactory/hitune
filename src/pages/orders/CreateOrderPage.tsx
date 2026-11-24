@@ -9,7 +9,6 @@ import {
   ChevronRight,
   ChevronLeft,
   AlertCircle,
-  Calendar,
   Check,
 } from 'lucide-react'
 import { dataService } from '../../services/dataService'
@@ -43,22 +42,21 @@ export const CreateOrderPage: React.FC = () => {
   const [totalPrice, setTotalPrice] = useState<number | ''>('')
   const [advancePaid, setAdvancePaid] = useState<number | ''>('')
 
-  // 4. Common Contact & Deadline
+  // 4. Common Contact
   const [whatsappPhone, setWhatsappPhone] = useState('')
-  const [deadline, setDeadline] = useState('')
 
   // 5. Fields for Type 1: নির্বাচনী প্রচারণা গান
   const [songTitle, setSongTitle] = useState('')
   const [candidateName, setCandidateName] = useState('')
-  const [candidatePosition, setCandidatePosition] = useState('মেয়র')
+  const [candidatePosition, setCandidatePosition] = useState('')
   const [electionSymbol, setElectionSymbol] = useState('')
   const [electionArea, setElectionArea] = useState('')
   const [campaignSlogan, setCampaignSlogan] = useState('')
 
   // 6. Fields for Type 2: মাদ্রাসা / স্কুল ভর্তি মাইকিং
   const [institutionName, setInstitutionName] = useState('')
-  const [admissionSession, setAdmissionSession] = useState('২০২৬ শিক্ষাবর্ষ')
-  const [availableClasses, setAvailableClasses] = useState('প্লে থেকে ১০ম শ্রেণি')
+  const [admissionSession, setAdmissionSession] = useState('')
+  const [availableClasses, setAvailableClasses] = useState('')
   const [institutionDetails, setInstitutionDetails] = useState('')
 
   // 7. Fields for Type 3: ওয়াজ মাহফিল মাইকিং
@@ -239,7 +237,7 @@ export const CreateOrderPage: React.FC = () => {
         category_id: matchedCategory?.id || undefined,
         category: matchedCategory,
         priority: 'NORMAL',
-        deadline: deadline || null,
+        deadline: null,
         audio_required: isAudioRequired,
         video_required: isVideoRequired,
         total_amount: numTotal,
@@ -699,8 +697,8 @@ export const CreateOrderPage: React.FC = () => {
       {/* ধাপ ৪: প্রয়োজনীয় তথ্যাদি ও অর্ডার কনফার্ম */}
       {/* ========================================================= */}
       {step === 4 && (
-        <form onSubmit={handleSubmit} className="space-y-5 animate-in fade-in duration-200">
-          <div className="p-5 sm:p-6 rounded-3xl bg-[#0f172a] border border-slate-800 shadow-xl space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4 animate-in fade-in duration-200">
+          <div className="p-4 sm:p-6 rounded-3xl bg-[#0f172a] border border-slate-800 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
                 <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-600 text-white text-xs font-bold">
@@ -710,22 +708,23 @@ export const CreateOrderPage: React.FC = () => {
               </h2>
             </div>
 
-            {/* 1. Client WhatsApp Phone - Always prominent at top */}
-            <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 space-y-1.5">
-              <label className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-                <MessageCircle className="h-4 w-4 text-emerald-400" />
-                <span>WhatsApp / মোবাইল নম্বর</span>
-                <span className="text-rose-500">*</span>
+            {/* 1. Client WhatsApp Phone */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300 block">
+                WhatsApp / মোবাইল নম্বর <span className="text-rose-500">*</span>
               </label>
-              <input
-                type="tel"
-                inputMode="tel"
-                value={whatsappPhone}
-                onChange={(e) => setWhatsappPhone(e.target.value)}
-                placeholder="017xxxxxxxx"
-                required
-                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/60 font-mono"
-              />
+              <div className="relative">
+                <MessageCircle className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-400" />
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  value={whatsappPhone}
+                  onChange={(e) => setWhatsappPhone(e.target.value)}
+                  placeholder="017xxxxxxxx"
+                  required
+                  className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-sm font-semibold text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 font-mono transition"
+                />
+              </div>
             </div>
 
             {/* 2. Category-Specific Fields */}
@@ -733,73 +732,73 @@ export const CreateOrderPage: React.FC = () => {
             {primaryType === 'ELECTION' && (
               <div className="space-y-3.5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-300">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300 block">
                       প্রার্থীর নাম <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={candidateName}
                       onChange={(e) => setCandidateName(e.target.value)}
-                      placeholder="যেমন: হাজী রফিকুল ইসলাম"
+                      placeholder="প্রার্থীর নাম"
                       required
-                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full px-3.5 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-300">পদের নাম</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300 block">পদের নাম</label>
                     <input
                       type="text"
                       value={candidatePosition}
                       onChange={(e) => setCandidatePosition(e.target.value)}
-                      placeholder="যেমন: মেয়র / চেয়ারম্যান / মেম্বার"
-                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="মেয়র / চেয়ারম্যান / মেম্বার"
+                      className="w-full px-3.5 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-300">নির্বাচনী প্রতীক / মার্কা</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300 block">প্রতীক / মার্কা</label>
                     <input
                       type="text"
                       value={electionSymbol}
                       onChange={(e) => setElectionSymbol(e.target.value)}
-                      placeholder="যেমন: নৌকা / ধানের শীষ / হাতপাখা"
-                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="প্রতীক"
+                      className="w-full px-3.5 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-300">নির্বাচনী এলাকা / ওয়ার্ড</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300 block">এলাকা / ওয়ার্ড</label>
                     <input
                       type="text"
                       value={electionArea}
                       onChange={(e) => setElectionArea(e.target.value)}
-                      placeholder="যেমন: জামালপুর সদর, ওয়ার্ড নং ০৩"
-                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="এলাকার নাম"
+                      className="w-full px-3.5 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition"
                     />
                   </div>
 
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className="text-xs font-semibold text-slate-300">গানের নাম</label>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <label className="text-xs font-semibold text-slate-300 block">গানের নাম</label>
                     <input
                       type="text"
                       value={songTitle}
                       onChange={(e) => setSongTitle(e.target.value)}
-                      placeholder="গানের শিরোনাম (খালি রাখলে প্রার্থীর নামে তৈরি হবে)"
-                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="গানের শিরোনাম"
+                      className="w-full px-3.5 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">স্লোগান / বিশেষ নোট</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300 block">বিশেষ নোট</label>
                   <textarea
                     value={campaignSlogan}
                     onChange={(e) => setCampaignSlogan(e.target.value)}
                     rows={2}
-                    placeholder="প্রয়োজনীয় নোট..."
-                    className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                    placeholder="স্লোগান বা অতিরিক্ত তথ্য..."
+                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 resize-none transition"
                   />
                 </div>
               </div>
@@ -809,51 +808,51 @@ export const CreateOrderPage: React.FC = () => {
             {primaryType === 'ADMISSION' && (
               <div className="space-y-3.5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className="text-xs font-semibold text-slate-300">
-                      মাদ্রাসা বা স্কুলের নাম <span className="text-rose-500">*</span>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <label className="text-xs font-semibold text-slate-300 block">
+                      প্রতিষ্ঠানের নাম <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={institutionName}
                       onChange={(e) => setInstitutionName(e.target.value)}
-                      placeholder="যেমন: জামিয়া ইসলামিয়া দারুল উলুম মাদ্রাসা বা আইডিয়াল স্কুল"
+                      placeholder="মাদ্রাসা বা স্কুলের নাম"
                       required
-                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full px-3.5 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-300">ভর্তি শিক্ষাবর্ষ ও বিভাগ</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300 block">শিক্ষাবর্ষ</label>
                     <input
                       type="text"
                       value={admissionSession}
                       onChange={(e) => setAdmissionSession(e.target.value)}
-                      placeholder="যেমন: ২০২৬ শিক্ষাবর্ষ, নূরানী ও হিফজ বিভাগ"
-                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="২০২৬ শিক্ষাবর্ষ"
+                      className="w-full px-3.5 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-300">ভর্তির শ্রেণি</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300 block">ভর্তির শ্রেণি</label>
                     <input
                       type="text"
                       value={availableClasses}
                       onChange={(e) => setAvailableClasses(e.target.value)}
-                      placeholder="যেমন: প্লে থেকে ১০ম শ্রেণি"
-                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="প্লে থেকে ১০ম শ্রেণি"
+                      className="w-full px-3.5 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">প্রতিষ্ঠানের ঠিকানা ও বিশেষ আকর্ষণ</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300 block">ঠিকানা ও নোট</label>
                   <textarea
                     value={institutionDetails}
                     onChange={(e) => setInstitutionDetails(e.target.value)}
                     rows={2}
-                    placeholder="যেমন: অভিজ্ঞ শিক্ষক, আবাসিক হোস্টেল, মনোরম পরিবেশ..."
-                    className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                    placeholder="ঠিকানা ও প্রয়োজনীয় তথ্য..."
+                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 resize-none transition"
                   />
                 </div>
               </div>
@@ -862,42 +861,42 @@ export const CreateOrderPage: React.FC = () => {
             {/* TYPE 3: WAZ */}
             {primaryType === 'WAZ' && (
               <div className="space-y-3.5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className="text-xs font-semibold text-slate-300">
-                      মাহফিলের নাম বা বিষয় <span className="text-rose-500">*</span>
+                <div className="grid grid-cols-1 gap-3.5">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300 block">
+                      মাহফিলের নাম <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={mahfilTitle}
                       onChange={(e) => setMahfilTitle(e.target.value)}
-                      placeholder="যেমন: বাৎসরিক তাফসিরুল কুরআন ও দোয়া মাহফিল"
+                      placeholder="মাহফিলের নাম বা বিষয়"
                       required
-                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full px-3.5 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition"
                     />
                   </div>
 
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className="text-xs font-semibold text-slate-300">মাহফিলের স্থান ও সময়</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300 block">স্থান ও সময়</label>
                     <input
                       type="text"
                       value={mahfilLocation}
                       onChange={(e) => setMahfilLocation(e.target.value)}
-                      placeholder="যেমন: জামালপুর বড় মসজিদ ময়দান, বাদে আসর"
-                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="মাহফিলের স্থান ও তারিখ"
+                      className="w-full px-3.5 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition"
                     />
                   </div>
-                </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">বক্তাগণ ও বিশেষ ঘোষণা</label>
-                  <textarea
-                    value={mahfilSpeakers}
-                    onChange={(e) => setMahfilSpeakers(e.target.value)}
-                    rows={2}
-                    placeholder="যেমন: প্রধান বক্তা: হযরত মাওলানা..., বিশেষ বক্তা: ..."
-                    className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
-                  />
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300 block">বক্তা ও নোট</label>
+                    <textarea
+                      value={mahfilSpeakers}
+                      onChange={(e) => setMahfilSpeakers(e.target.value)}
+                      rows={2}
+                      placeholder="প্রধান বক্তা ও বিবরণ..."
+                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 resize-none transition"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -906,76 +905,65 @@ export const CreateOrderPage: React.FC = () => {
             {primaryType === 'CUSTOM' && (
               <div className="space-y-3.5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-300">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300 block">
                       কাজের শিরোনাম <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={customTitle}
                       onChange={(e) => setCustomTitle(e.target.value)}
-                      placeholder="যেমন: নতুন ব্যবসা প্রতিষ্ঠানের বিজ্ঞাপন"
+                      placeholder="কাজের নাম"
                       required
-                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full px-3.5 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-300">ক্লায়েন্টের নাম</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300 block">ক্লায়েন্টের নাম</label>
                     <input
                       type="text"
                       value={customClientName}
                       onChange={(e) => setCustomClientName(e.target.value)}
-                      placeholder="ক্লায়েন্টের নাম লিখুন"
-                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="ক্লায়েন্টের নাম"
+                      className="w-full px-3.5 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">কাজের বিস্তারিত বিবরণ</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300 block">বিবরণ</label>
                   <textarea
                     value={customDetails}
                     onChange={(e) => setCustomDetails(e.target.value)}
                     rows={2}
-                    placeholder="কাজের বিস্তারিত বিবরণ ও বিশেষ নির্দেশনা..."
-                    className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                    placeholder="কাজের বিবরণ..."
+                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 resize-none transition"
                   />
                 </div>
               </div>
             )}
 
-            {/* Optional Deadline Input */}
-            <div className="pt-2 border-t border-slate-800/80">
-              <label className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 mb-1.5">
-                <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                <span>ডেলিভারি তারিখ</span>
-              </label>
-              <input
-                type="date"
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-                className="w-full sm:w-64 px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Order Summary Recap Card */}
-            <div className="p-3.5 rounded-2xl bg-slate-950/90 border border-slate-800/80 text-xs">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-slate-400 text-[11px]">
+            {/* Clean Symmetric Summary Card */}
+            <div className="p-4 rounded-2xl bg-slate-950/90 border border-slate-800/80 space-y-3">
+              <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-800/80">
+                <span className="font-semibold text-white">{categoryLabel}</span>
+                <span className="px-2.5 py-0.5 rounded-lg bg-blue-500/15 text-blue-400 font-semibold">
+                  {workFormat === 'AUDIO_VIDEO' ? 'অডিও ও ভিডিও' : 'শুধু অডিও'}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
                 <div>
-                  ক্যাটাগরি: <strong className="text-white block">{categoryLabel}</strong>
+                  <span className="text-[11px] text-slate-400 block">মোট চুক্তি</span>
+                  <strong className="text-sm text-white font-bold">{formatCurrency(numTotal)}</strong>
                 </div>
                 <div>
-                  মাধ্যম: <strong className="text-white block">{workFormat === 'AUDIO_VIDEO' ? 'অডিও ও ভিডিও' : 'শুধু অডিও'}</strong>
+                  <span className="text-[11px] text-slate-400 block">অগ্রিম</span>
+                  <strong className="text-sm text-emerald-400 font-bold">{formatCurrency(numAdvance)}</strong>
                 </div>
                 <div>
-                  মোট চুক্তি: <strong className="text-white block">{formatCurrency(numTotal)}</strong>
-                </div>
-                <div>
-                  অগ্রিম: <strong className="text-emerald-400 block">{formatCurrency(numAdvance)}</strong>
-                </div>
-                <div>
-                  বকেয়া: <strong className="text-amber-400 block">{formatCurrency(dueBalance)}</strong>
+                  <span className="text-[11px] text-slate-400 block">বকেয়া</span>
+                  <strong className="text-sm text-amber-400 font-bold">{formatCurrency(dueBalance)}</strong>
                 </div>
               </div>
             </div>
