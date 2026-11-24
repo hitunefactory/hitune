@@ -38,6 +38,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const CURRENT_USER_KEY = 'hitune_active_user_id_v2'
 const CURRENT_ROLE_KEY = 'hitune_active_role_v2'
 
+// Tab-isolated storage helpers
+const setTabUser = (userId: string, role: UserRole) => {
+  sessionStorage.setItem(CURRENT_USER_KEY, userId)
+  sessionStorage.setItem(CURRENT_ROLE_KEY, role)
+}
+
+const clearTabUser = () => {
+  sessionStorage.removeItem(CURRENT_USER_KEY)
+  sessionStorage.removeItem(CURRENT_ROLE_KEY)
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<Profile | null>(null)
   const [currentRole, setCurrentRole] = useState<UserRole>('AUDIO_DESIGNER')
@@ -47,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     async function initAuth() {
       setIsLoading(true)
       try {
-        // 1. Check Supabase session if configured
+        // 1. Check Supabase session if configured in this tab's sessionStorage
         if (isSupabaseConfigured) {
           const { data: { session } } = await supabase.auth.getSession()
           if (session?.user) {
@@ -61,18 +72,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const activeProfile = profile as Profile
               setUser(activeProfile)
               setCurrentRole(activeProfile.role)
-              localStorage.setItem(CURRENT_USER_KEY, activeProfile.id)
-              localStorage.setItem(CURRENT_ROLE_KEY, activeProfile.role)
+              setTabUser(activeProfile.id, activeProfile.role)
               setIsLoading(false)
               return
             }
           }
         }
 
-        // 2. Check local saved user
+        // 2. Check tab-specific saved user first, then fallback to localStorage if fresh tab
         const staffList = await dataService.getStaff()
-        const savedUserId = localStorage.getItem(CURRENT_USER_KEY)
-        const savedRole = localStorage.getItem(CURRENT_ROLE_KEY) as UserRole | null
+        let savedUserId = sessionStorage.getItem(CURRENT_USER_KEY)
+        let savedRole = sessionStorage.getItem(CURRENT_ROLE_KEY) as UserRole | null
+
+        if (!savedUserId) {
+          savedUserId = localStorage.getItem(CURRENT_USER_KEY)
+          savedRole = localStorage.getItem(CURRENT_ROLE_KEY) as UserRole | null
+        }
 
         const activeUser = staffList.find((s) => s.id === savedUserId)
         if (activeUser) {
@@ -81,6 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             ? savedRole
             : activeUser.role
           setCurrentRole(validRole)
+          setTabUser(activeUser.id, validRole)
         }
       } catch (err) {
         console.error('Failed to init auth:', err)
@@ -91,7 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initAuth()
 
-    // Supabase auth state listener
+    // Supabase auth state listener (scoped to this tab's session)
     if (isSupabaseConfigured) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
@@ -102,13 +118,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .single()
 
           if (profile) {
-            setUser(profile as Profile)
-            setCurrentRole((profile as Profile).role)
+            const p = profile as Profile
+            setUser(p)
+            setCurrentRole(p.role)
+            setTabUser(p.id, p.role)
           }
         } else if (event === 'SIGNED_OUT') {
           setUser(null)
-          localStorage.removeItem(CURRENT_USER_KEY)
-          localStorage.removeItem(CURRENT_ROLE_KEY)
+          clearTabUser()
         }
       })
 
@@ -129,7 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return
     if (user.roles.includes(newRole) || user.role === 'SUPER_ADMIN') {
       setCurrentRole(newRole)
-      localStorage.setItem(CURRENT_ROLE_KEY, newRole)
+      sessionStorage.setItem(CURRENT_ROLE_KEY, newRole)
     }
   }
 
@@ -155,7 +172,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         })
 
         if (error) {
-          // If Supabase throws error, return error
           console.warn('Supabase signup error:', error)
           return { success: false, error: error.message }
         }
@@ -185,6 +201,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUser(newProfile)
       setCurrentRole(newProfile.role)
+      setTabUser(newProfile.id, newProfile.role)
       localStorage.setItem(CURRENT_USER_KEY, newProfile.id)
       localStorage.setItem(CURRENT_ROLE_KEY, newProfile.role)
 
@@ -217,8 +234,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const activeProfile = profile as Profile
             setUser(activeProfile)
             setCurrentRole(activeProfile.role)
-            localStorage.setItem(CURRENT_USER_KEY, activeProfile.id)
-            localStorage.setItem(CURRENT_ROLE_KEY, activeProfile.role)
+            setTabUser(activeProfile.id, activeProfile.role)
             return { success: true }
           }
         }
@@ -230,8 +246,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (matched) {
         setUser(matched)
         setCurrentRole(matched.role)
-        localStorage.setItem(CURRENT_USER_KEY, matched.id)
-        localStorage.setItem(CURRENT_ROLE_KEY, matched.role)
+        setTabUser(matched.id, matched.role)
         return { success: true }
       }
 
@@ -269,8 +284,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch {}
     }
     setUser(null)
-    localStorage.removeItem(CURRENT_USER_KEY)
-    localStorage.removeItem(CURRENT_ROLE_KEY)
+    clearTabUser()
   }
 
   const availableRoles: UserRole[] = user ? (user.role === 'SUPER_ADMIN' ? [

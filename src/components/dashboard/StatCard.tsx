@@ -66,36 +66,36 @@ export const StatCard: React.FC<StatCardProps> = ({
     <div
       onClick={onClick}
       className={cn(
-        'p-4 rounded-2xl bg-gradient-to-br bg-slate-900/80 border transition-all duration-200 relative overflow-hidden group shadow-lg',
+        'p-3 sm:p-4 rounded-2xl bg-gradient-to-br bg-slate-900/80 border transition-all duration-200 relative overflow-hidden group shadow-lg',
         currentTheme.bg,
         currentTheme.border,
         onClick && 'cursor-pointer hover:scale-[1.02]'
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1">
-          <span className="text-xs font-medium text-slate-400 leading-tight block">
+      <div className="flex items-start justify-between gap-2">
+        <div className="space-y-1 min-w-0">
+          <span className="text-[11px] sm:text-xs font-medium text-slate-400 leading-tight block truncate">
             {title}
           </span>
-          <div className="text-2xl font-bold tracking-tight text-white flex items-baseline gap-1">
+          <div className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-baseline gap-1 truncate">
             {isCurrency ? (
               <>
-                <span className="text-lg font-semibold text-slate-400">৳</span>
-                <span>{formatBengaliNumber(value)}</span>
+                <span className="text-base sm:text-lg font-semibold text-slate-400">৳</span>
+                <span className="truncate">{formatBengaliNumber(value)}</span>
               </>
             ) : (
-              <span>{formatBengaliNumber(value)}</span>
+              <span className="truncate">{formatBengaliNumber(value)}</span>
             )}
           </div>
           {subValue && (
-            <span className="text-[11px] text-slate-400 block pt-0.5">
+            <span className="text-[10px] sm:text-[11px] text-slate-400 block pt-0.5 truncate">
               {subValue}
             </span>
           )}
         </div>
 
-        <div className={cn('p-2.5 rounded-xl shrink-0 transition-transform group-hover:rotate-6', currentTheme.iconBg)}>
-          <Icon className="h-5 w-5" />
+        <div className={cn('p-2 sm:p-2.5 rounded-xl shrink-0 transition-transform group-hover:rotate-6', currentTheme.iconBg)}>
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </div>
       </div>
     </div>

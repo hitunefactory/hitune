@@ -1,5 +1,5 @@
-import React from 'react'
-import { NavLink } from 'react-router-dom'
+import React, { useState } from 'react'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   FolderKanban,
@@ -16,11 +16,15 @@ import {
   ChevronRight,
   Music2,
   Sparkles,
+  X,
+  LogOut,
+  Layers,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { ROLE_LABELS_BN } from '../../lib/constants'
 import { cn } from '../../lib/utils'
 import { UserAvatar } from '../ui/UserAvatar'
+import { UserRole } from '../../types/database'
 
 interface SidebarProps {
   collapsed: boolean
@@ -35,7 +39,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   mobileOpen,
   setMobileOpen,
 }) => {
-  const { user, currentRole, hasRole } = useAuth()
+  const { user, currentRole, availableRoles, switchRole, logout, hasRole } = useAuth()
+  const navigate = useNavigate()
+  const [showRoleSelect, setShowRoleSelect] = useState(false)
 
   const navItems = [
     {
@@ -152,23 +158,66 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </button>
+
+          {/* Mobile Close Button */}
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="lg:hidden flex items-center justify-center h-8 w-8 rounded-xl bg-slate-800/80 text-slate-400 hover:text-white transition"
+            title="মেনু বন্ধ করুন"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Current Active Role Badge */}
         {!collapsed && (
-          <div className="mx-3 my-3 p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-center justify-between">
-            <div className="flex items-center gap-2 overflow-hidden">
-              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <div className="flex flex-col truncate">
-                <span className="text-[11px] text-slate-400 font-medium leading-none">বর্তমান ভূমিকা:</span>
-                <span className="text-xs font-semibold text-white mt-1 truncate">
-                  {roleInfo.title}
-                </span>
+          <div className="mx-3 my-2.5 p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 overflow-hidden">
+                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <div className="flex flex-col truncate">
+                  <span className="text-[11px] text-slate-400 font-medium leading-none">বর্তমান ভূমিকা:</span>
+                  <span className="text-xs font-semibold text-white mt-1 truncate">
+                    {roleInfo.title}
+                  </span>
+                </div>
               </div>
+              {availableRoles.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowRoleSelect(!showRoleSelect)}
+                  className="text-[10px] px-2 py-0.5 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 font-semibold cursor-pointer"
+                >
+                  পরিবর্তন
+                </button>
+              ) : (
+                <span className={cn('text-[10px] px-1.5 py-0.5 rounded border', roleInfo.color)}>
+                  অনুমোদিত
+                </span>
+              )}
             </div>
-            <span className={cn('text-[10px] px-1.5 py-0.5 rounded border', roleInfo.color)}>
-              অনুমোদিত
-            </span>
+
+            {/* Role dropdown inside sidebar on mobile */}
+            {showRoleSelect && availableRoles.length > 1 && (
+              <div className="pt-2 border-t border-slate-800/80 space-y-1">
+                {availableRoles.map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => {
+                      switchRole(r as UserRole)
+                      setShowRoleSelect(false)
+                    }}
+                    className={cn(
+                      'w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition',
+                      currentRole === r ? 'bg-blue-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-800'
+                    )}
+                  >
+                    <span>{ROLE_LABELS_BN[r as UserRole]?.title || r}</span>
+                    {currentRole === r && <span className="text-xs">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -209,20 +258,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Bottom Studio Location & Staff Avatar */}
         <div className="p-3 border-t border-slate-800 bg-[#070b14]/70">
           {!collapsed ? (
-            <div className="flex items-center gap-3">
-              <UserAvatar
-                src={user?.avatar_url}
-                name={user?.bengali_name || user?.full_name}
-                size="md"
-              />
-              <div className="flex flex-col truncate">
-                <span className="text-xs font-semibold text-white truncate">
-                  {user?.bengali_name || user?.full_name}
-                </span>
-                <span className="text-[10px] text-slate-400 truncate">
-                  জামালপুর সদর, বাংলাদেশ
-                </span>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <UserAvatar
+                  src={user?.avatar_url}
+                  name={user?.bengali_name || user?.full_name}
+                  size="md"
+                />
+                <div className="flex flex-col truncate">
+                  <span className="text-xs font-semibold text-white truncate">
+                    {user?.bengali_name || user?.full_name}
+                  </span>
+                  <span className="text-[10px] text-slate-400 truncate">
+                    জামালপুর সদর, বাংলাদেশ
+                  </span>
+                </div>
               </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  logout()
+                  setMobileOpen(false)
+                  navigate('/login')
+                }}
+                className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer shrink-0"
+                title="লগআউট করুন"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
             </div>
           ) : (
             <div className="flex justify-center">

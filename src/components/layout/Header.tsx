@@ -32,6 +32,7 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
 
+  const [showMobileSearch, setShowMobileSearch] = useState(false)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [showNotifMenu, setShowNotifMenu] = useState(false)
   const [showRoleMenu, setShowRoleMenu] = useState(false)
@@ -96,14 +97,24 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
   }
 
   return (
-    <header className="sticky top-0 z-30 h-16 bg-[#0b1120]/90 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-6 flex items-center justify-between transition-colors">
+    <header className="sticky top-0 z-30 h-16 bg-[#0b1120]/90 backdrop-blur-md border-b border-slate-800/80 px-3 sm:px-4 lg:px-6 flex items-center justify-between transition-colors">
       {/* Left: Mobile hamburger & Global Search */}
-      <div className="flex items-center gap-3 flex-1 max-w-lg">
+      <div className="flex items-center gap-2 sm:gap-3 flex-1 max-w-lg">
         <button
           onClick={() => setMobileOpen(true)}
-          className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+          className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+          title="মেনু খুলুন"
         >
           <Menu className="h-5 w-5" />
+        </button>
+
+        {/* Mobile Search Toggle */}
+        <button
+          onClick={() => setShowMobileSearch(!showMobileSearch)}
+          className="sm:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+          title="খুঁজুন"
+        >
+          <Search className="h-4 w-4" />
         </button>
 
         <form onSubmit={handleSearchSubmit} className="relative w-full hidden sm:block">
@@ -118,16 +129,40 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
         </form>
       </div>
 
+      {/* Mobile Search Bar Popup */}
+      {showMobileSearch && (
+        <div className="absolute top-16 left-0 right-0 p-3 bg-[#0b1120] border-b border-slate-800 sm:hidden z-40 animate-in slide-in-from-top-2">
+          <form
+            onSubmit={(e) => {
+              handleSearchSubmit(e)
+              setShowMobileSearch(false)
+            }}
+            className="relative w-full"
+          >
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              autoFocus
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="অর্ডার নম্বর বা ক্লায়েন্টের নাম..."
+              className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </form>
+        </div>
+      )}
+
       {/* Right: Actions, Notifications, Role Switcher, Profile */}
-      <div className="flex items-center gap-2.5">
-        {/* Quick Add Order Button */}
+      <div className="flex items-center gap-1.5 sm:gap-2.5">
+        {/* Quick Add Order Button - visible on mobile as icon, with label on sm */}
         {hasRole(['SUPER_ADMIN', 'ORDER_MANAGER']) && (
           <Link
             to="/orders/new"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-blue-600/30 transition transform active:scale-95"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-blue-600/30 transition transform active:scale-95"
+            title="নতুন অর্ডার তৈরি করুন"
           >
             <Plus className="h-4 w-4" />
-            <span>নতুন অর্ডার</span>
+            <span className="hidden sm:inline">নতুন অর্ডার</span>
           </Link>
         )}
 
@@ -150,7 +185,7 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
             </button>
 
             {showRoleMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-[#0f172a] border border-slate-800 rounded-2xl shadow-2xl p-2 z-50">
+              <div className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-1.5rem)] bg-[#0f172a] border border-slate-800 rounded-2xl shadow-2xl p-2 z-50">
                 <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800/80">
                   ভূমিকা পরিবর্তন করুন
                 </div>
@@ -232,7 +267,7 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
           </button>
 
           {showNotifMenu && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#0f172a] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50">
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 max-w-[calc(100vw-1.5rem)] bg-[#0f172a] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50">
               <div className="p-3 border-b border-slate-800/80 flex items-center justify-between bg-slate-900/50">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-white text-sm">বিজ্ঞপ্তিসমূহ</span>
@@ -305,7 +340,7 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
           </button>
 
           {showUserMenu && (
-            <div className="absolute right-0 mt-2 w-64 bg-[#0f172a] border border-slate-800 rounded-2xl shadow-2xl p-2 z-50">
+            <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-1.5rem)] bg-[#0f172a] border border-slate-800 rounded-2xl shadow-2xl p-2 z-50">
               <div className="p-3 border-b border-slate-800/80">
                 <div className="text-sm font-bold text-white">{user?.bengali_name || user?.full_name}</div>
                 <div className="text-xs text-slate-400 truncate">{user?.email}</div>

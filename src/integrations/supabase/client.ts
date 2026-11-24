@@ -13,7 +13,15 @@ export const isSupabaseConfigured = Boolean(
 // Fallback dummy URL and anon key to prevent createClient from throwing on initialization
 export const supabase = createClient(
   isSupabaseConfigured ? supabaseUrl : 'https://dummy-hi-tune.supabase.co',
-  isSupabaseConfigured ? supabaseAnonKey : 'dummy-anon-key'
+  isSupabaseConfigured ? supabaseAnonKey : 'dummy-anon-key',
+  {
+    auth: {
+      storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  }
 )
 
 export interface SupabaseHealth {

@@ -23,6 +23,7 @@ import {
   Coins,
   ChevronDown,
   Phone,
+  Eye,
 } from 'lucide-react'
 import { StatCard } from '../../components/dashboard/StatCard'
 import { StatusBadge } from '../../components/ui/StatusBadge'
@@ -431,87 +432,141 @@ export const DashboardPage: React.FC = () => {
           </Link>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#0b1120]/70 text-slate-400 border-b border-slate-800/80">
-              <tr>
-                <th className="py-3 px-4 font-semibold">অর্ডার নং</th>
-                <th className="py-3 px-4 font-semibold">কাজের শিরোনাম ও ক্যাটাগরি</th>
-                <th className="py-3 px-4 font-semibold">ক্লায়েন্ট ও ফোন</th>
-                <th className="py-3 px-4 font-semibold">ডেডলাইন</th>
-                <th className="py-3 px-4 font-semibold">প্রোডাকশন স্থিতি</th>
-                <th className="py-3 px-4 font-semibold text-right">মোট / বকেয়া</th>
-                <th className="py-3 px-4 font-semibold text-center">অ্যাকশন</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 text-slate-300">
-              {filteredOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400 text-xs">
-                    <div className="space-y-1">
-                      <p className="text-slate-300 font-medium">
-                        {dateFilter === 'TODAY'
-                          ? 'আজকে এখনও কোনো নতুন অর্ডার এন্ট্রি করা হয়নি।'
-                          : 'নির্বাচিত এই তারিখে কোনো অর্ডার পাওয়া যায়নি।'}
-                      </p>
-                      <p className="text-[11px] text-slate-500">
-                        উপরে "গতকাল", "গত পরশু" বা তারিখ পরিবর্তন করে পূর্বের অর্ডার দেখতে পারেন অথবা "+ নতুন অর্ডার গ্রহণ" বাটনে ক্লিক করুন।
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredOrders.map((ord) => (
-                  <tr key={ord.id} className="hover:bg-slate-800/40 transition">
-                    <td className="py-3.5 px-4 font-bold text-white whitespace-nowrap">
-                      {ord.order_number}
-                    </td>
-                    <td className="py-3.5 px-4 max-w-xs truncate">
-                      <div className="font-medium text-slate-100 truncate">{ord.title}</div>
-                      <div className="text-[11px] text-blue-400/90 truncate">{ord.category?.name_bn || 'কাস্টম'}</div>
-                    </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="font-medium text-slate-200">{ord.client_name}</div>
+        {filteredOrders.length === 0 ? (
+          <div className="py-12 px-4 text-center text-slate-400 text-xs">
+            <div className="space-y-1">
+              <p className="text-slate-300 font-medium">
+                {dateFilter === 'TODAY'
+                  ? 'আজকে এখনও কোনো নতুন অর্ডার এন্ট্রি করা হয়নি।'
+                  : 'নির্বাচিত এই তারিখে কোনো অর্ডার পাওয়া যায়নি।'}
+              </p>
+              <p className="text-[11px] text-slate-500">
+                উপরে "গতকাল", "গত পরশু" বা তারিখ পরিবর্তন করে পূর্বের অর্ডার দেখতে পারেন অথবা "+ নতুন অর্ডার গ্রহণ" বাটনে ক্লিক করুন।
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div>
+            {/* Mobile Cards View (sm:hidden) */}
+            <div className="block sm:hidden divide-y divide-slate-800/80">
+              {filteredOrders.map((ord) => (
+                <div key={ord.id} className="p-4 space-y-3 hover:bg-slate-800/30 transition">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-white text-sm">{ord.order_number}</span>
+                    <StatusBadge status={ord.overall_status} />
+                  </div>
+
+                  <div>
+                    <div className="font-semibold text-white text-sm leading-snug">{ord.title}</div>
+                    <div className="text-xs text-blue-400 mt-0.5">{ord.category?.name_bn || 'কাস্টম'}</div>
+                  </div>
+
+                  <div className="flex items-start justify-between text-xs text-slate-300 pt-1">
+                    <div>
+                      <span className="text-slate-400">ক্লায়েন্ট: </span>
+                      <span className="font-medium text-slate-200">{ord.client_name}</span>
                       {ord.client_phone && (
                         <a
                           href={`https://wa.me/88${ord.client_phone.replace(/\D/g, '')}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 font-mono"
+                          className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 font-mono mt-0.5"
                         >
                           <Phone className="h-3 w-3" />
                           <span>{ord.client_phone}</span>
                         </a>
                       )}
-                    </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap text-slate-400">
-                      {formatBengaliDate(ord.deadline)}
-                    </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <StatusBadge status={ord.overall_status} />
-                    </td>
-                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                      <div className="font-semibold text-slate-200">{formatCurrency(ord.total_amount)}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-white">{formatCurrency(ord.total_amount)}</div>
                       {ord.due_amount > 0 ? (
                         <div className="text-[11px] text-amber-400">বকেয়া: {formatCurrency(ord.due_amount)}</div>
                       ) : (
                         <div className="text-[11px] text-emerald-400">পরিশোধিত</div>
                       )}
-                    </td>
-                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                      <Link
-                        to={`/orders/${ord.id}`}
-                        className="px-3 py-1.5 rounded-xl bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white transition font-medium text-xs inline-flex items-center gap-1"
-                      >
-                        <span>বিস্তারিত</span>
-                      </Link>
-                    </td>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-end border-t border-slate-800/60">
+                    <Link
+                      to={`/orders/${ord.id}`}
+                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-md transition inline-flex items-center gap-1.5"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>বিস্তারিত দেখুন</span>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View (hidden sm:block) */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#0b1120]/70 text-slate-400 border-b border-slate-800/80">
+                  <tr>
+                    <th className="py-3 px-4 font-semibold">অর্ডার নং</th>
+                    <th className="py-3 px-4 font-semibold">কাজের শিরোনাম ও ক্যাটাগরি</th>
+                    <th className="py-3 px-4 font-semibold">ক্লায়েন্ট ও ফোন</th>
+                    <th className="py-3 px-4 font-semibold">ডেডলাইন</th>
+                    <th className="py-3 px-4 font-semibold">প্রোডাকশন স্থিতি</th>
+                    <th className="py-3 px-4 font-semibold text-right">মোট / বকেয়া</th>
+                    <th className="py-3 px-4 font-semibold text-center">অ্যাকশন</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                  {filteredOrders.map((ord) => (
+                    <tr key={ord.id} className="hover:bg-slate-800/40 transition">
+                      <td className="py-3.5 px-4 font-bold text-white whitespace-nowrap">
+                        {ord.order_number}
+                      </td>
+                      <td className="py-3.5 px-4 max-w-xs truncate">
+                        <div className="font-medium text-slate-100 truncate">{ord.title}</div>
+                        <div className="text-[11px] text-blue-400/90 truncate">{ord.category?.name_bn || 'কাস্টম'}</div>
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="font-medium text-slate-200">{ord.client_name}</div>
+                        {ord.client_phone && (
+                          <a
+                            href={`https://wa.me/88${ord.client_phone.replace(/\D/g, '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 font-mono"
+                          >
+                            <Phone className="h-3 w-3" />
+                            <span>{ord.client_phone}</span>
+                          </a>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap text-slate-400">
+                        {formatBengaliDate(ord.deadline)}
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <StatusBadge status={ord.overall_status} />
+                      </td>
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <div className="font-semibold text-slate-200">{formatCurrency(ord.total_amount)}</div>
+                        {ord.due_amount > 0 ? (
+                          <div className="text-[11px] text-amber-400">বকেয়া: {formatCurrency(ord.due_amount)}</div>
+                        ) : (
+                          <div className="text-[11px] text-emerald-400">পরিশোধিত</div>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        <Link
+                          to={`/orders/${ord.id}`}
+                          className="px-3 py-1.5 rounded-xl bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white transition font-medium text-xs inline-flex items-center gap-1"
+                        >
+                          <span>বিস্তারিত</span>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Production Stage Chart & Category Breakdown */}
