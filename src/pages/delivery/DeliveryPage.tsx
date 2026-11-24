@@ -111,11 +111,8 @@ export const DeliveryPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Truck className="h-6 w-6 text-teal-400" />
-            <span>ডেলিভারি ব্যবস্থাপনা বিভাগ</span>
+            <span>ডেলিভারি বিভাগ</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            কোয়ালিটি টেস্ট উত্তীর্ণ চূড়ান্ত ফাইল ক্লায়েন্টকে হস্তান্তর ও বিতরণ নিশ্চিতকরণ
-          </p>
         </div>
 
         <span className="px-3 py-1 rounded-xl bg-teal-500/20 border border-teal-500/30 text-teal-400 text-xs font-semibold">

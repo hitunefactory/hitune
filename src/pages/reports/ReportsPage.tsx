@@ -80,11 +80,8 @@ export const ReportsPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <BarChart3 className="h-6 w-6 text-blue-500" />
-            <span>রিপোর্ট ও ব্যবসায়িক বিশ্লেষণ</span>
+            <span>রিপোর্ট ও বিশ্লেষণ</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            অর্ডার, ডেলিভারি, আয় ও ব্যয়ের অফিশিয়াল প্রিন্ট ও এক্সপোর্ট রিপোর্ট
-          </p>
         </div>
 
         <div className="flex items-center gap-2">

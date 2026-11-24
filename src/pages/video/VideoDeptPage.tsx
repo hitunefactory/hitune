@@ -134,11 +134,8 @@ export const VideoDeptPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Video className="h-6 w-6 text-cyan-400" />
-            <span>ভিডিও প্রোডাকশন বিভাগ</span>
+            <span>ভিডিও বিভাগ</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            ভিডিও সম্পাদনা, মোশন গ্রাফিক্স, টাইটেল কার্ড ও ফাইনাল রেন্ডার
-          </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -185,10 +182,10 @@ export const VideoDeptPage: React.FC = () => {
 
       {/* Target Order Banner */}
       {targetOrderId && (
-        <div className="p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-between gap-3 text-xs text-cyan-300">
+        <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-between gap-3 text-xs text-cyan-300">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-cyan-400 shrink-0" />
-            <span>আপনি নোটিফিকেশন থেকে নির্দিষ্ট ভিডিও অর্ডারে প্রবেশ করেছেন। সংশ্লিষ্ট অর্ডারটি চিহ্নিত করা হয়েছে।</span>
+            <span>চিহ্নিত অর্ডারটি নিচে দেখুন</span>
           </div>
           <Link
             to="/video"

@@ -251,26 +251,17 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Welcome & Action Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-900/60 via-slate-900 to-[#0b1120] border border-blue-500/20 p-6 lg:p-8 shadow-2xl">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-900/60 via-slate-900 to-[#0b1120] border border-blue-500/20 p-5 sm:p-6 shadow-2xl">
         <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-blue-500/10 to-transparent pointer-events-none" />
         <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-xs font-semibold mb-3">
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>জামালপুর প্রোডাকশন কন্ট্রোল হাব</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              এইচ আই টিউন স্টুডিও ড্যাশবোর্ড
-            </h1>
-            <p className="text-sm text-slate-400 mt-1 max-w-xl">
-              প্রতিদিনের অর্ডার, রিয়েল-টাইম প্রোডাকশন ওয়ার্কফ্লো এবং হিসাব নিরীক্ষণ।
-            </p>
-          </div>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+            এইচ আই টিউন স্টুডিও ড্যাশবোর্ড
+          </h1>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
             <Link
               to="/orders/new"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-2xl shadow-lg shadow-blue-600/30 transition transform active:scale-95"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-2xl shadow-lg shadow-blue-600/30 transition transform active:scale-95"
             >
               <Plus className="h-4 w-4" />
               <span>নতুন অর্ডার গ্রহণ</span>
@@ -404,25 +395,22 @@ export const DashboardPage: React.FC = () => {
       {/* Daily Financial Cards for Selected Date */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
-          title={dateFilter === 'ALL' ? 'মোট চুক্তি মূল্য' : 'দিনের অর্ডারের চুক্তি মূল্য'}
+          title="চুক্তি মূল্য"
           value={currentStats.totalContractAmount}
-          subValue={dateFilter === 'ALL' ? 'সর্বমোট অর্ডার মূল্য' : 'নির্বাচিত তারিখে গৃহীত অর্ডারের মোট প্রাইজ'}
           icon={Coins}
           colorScheme="blue"
           isCurrency
         />
         <StatCard
-          title={dateFilter === 'ALL' ? 'মোট সংগৃহীত পেমেন্ট' : 'দিনের সংগৃহীত পেমেন্ট'}
+          title="আদায়কৃত পেমেন্ট"
           value={currentStats.paymentsReceivedOnDate}
-          subValue={dateFilter === 'ALL' ? 'যাচাইকৃত ক্যাশ জমা' : 'অগ্রিম ও আদায়কৃত ক্যাশ'}
           icon={Wallet}
           colorScheme="emerald"
           isCurrency
         />
         <StatCard
-          title={dateFilter === 'ALL' ? 'মোট বকেয়া প্রাপ্য' : 'দিনের অর্ডারে বাকি / বকেয়া'}
+          title="বকেয়া প্রাপ্য"
           value={currentStats.totalDueAmount}
-          subValue="ক্লায়েন্টদের কাছে অবশিষ্ট বকেয়া"
           icon={AlertCircle}
           colorScheme="amber"
           isCurrency
@@ -432,20 +420,17 @@ export const DashboardPage: React.FC = () => {
       {/* Orders Table for the Selected Date */}
       <div className="rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl overflow-hidden">
         <div className="p-5 border-b border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <h3 className="font-bold text-white text-base flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-blue-400" />
-              <span>{dateFilter === 'ALL' ? 'সকল অর্ডার তালিকা' : `${dateDisplayTitle} এর তালিকা`}</span>
+          <div className="flex items-center gap-2.5">
+            <CalendarDays className="h-4 w-4 text-blue-400" />
+            <h3 className="font-bold text-white text-base">
+              {dateFilter === 'ALL' ? 'সকল অর্ডার তালিকা' : `${dateDisplayTitle} (${formatBengaliNumber(filteredOrders.length)} টি)`}
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              সর্বমোট {formatBengaliNumber(filteredOrders.length)} টি অর্ডার পাওয়া গেছে
-            </p>
           </div>
           <Link
             to="/orders"
             className="text-xs text-blue-400 hover:text-blue-300 font-semibold inline-flex items-center gap-1"
           >
-            <span>সম্পূর্ণ ম্যানেজমেন্ট পেজে যান</span>
+            <span>সব দেখুন</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -688,17 +673,14 @@ export const DashboardPage: React.FC = () => {
       <div className="rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl overflow-hidden">
         <button
           onClick={() => setShowLifetimeSection(!showLifetimeSection)}
-          className="w-full p-5 flex items-center justify-between text-left hover:bg-slate-800/30 transition"
+          className="w-full p-5 flex items-center justify-between text-left hover:bg-slate-800/30 transition cursor-pointer"
         >
           <div className="flex items-center gap-3">
             <Coins className="h-5 w-5 text-emerald-400" />
-            <div>
-              <h3 className="font-bold text-white text-base">সার্বিক স্টুডিও লাইফটাইম হিসাব ও তহবিল স্থিতি</h3>
-              <p className="text-xs text-slate-400">স্টুডিওর সর্বমোট আদায়, বকেয়া, খরচ ও ক্যাশ ব্যালেন্স</p>
-            </div>
+            <h3 className="font-bold text-white text-base">স্টুডিও লাইফটাইম হিসাব</h3>
           </div>
           <div className="flex items-center gap-2 text-xs text-blue-400 font-medium">
-            <span>{showLifetimeSection ? 'সংক্ষেপ করুন' : 'বিস্তারিত দেখুন'}</span>
+            <span>{showLifetimeSection ? 'বন্ধ করুন' : 'দেখুন'}</span>
             <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showLifetimeSection ? 'rotate-180' : ''}`} />
           </div>
         </button>
@@ -706,33 +688,29 @@ export const DashboardPage: React.FC = () => {
         {showLifetimeSection && (
           <div className="p-5 pt-0 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
             <StatCard
-              title="সর্বমোট আদায়কৃত পেমেন্ট"
+              title="মোট পেমেন্ট"
               value={lifetimeStats.totalReceivedPayments}
-              subValue="লাইফটাইম ক্যাশ ও অনলাইন জমা"
               icon={Wallet}
               colorScheme="emerald"
               isCurrency
             />
             <StatCard
-              title="সর্বমোট বকেয়া প্রাপ্য"
+              title="মোট বকেয়া"
               value={lifetimeStats.totalOutstandingBalances}
-              subValue="ক্লায়েন্টদের কাছে অবশিষ্ট বকেয়া"
               icon={AlertCircle}
               colorScheme="amber"
               isCurrency
             />
             <StatCard
-              title="সর্বমোট স্টুডিও ব্যয়"
+              title="মোট খরচ"
               value={lifetimeStats.totalExpenses}
-              subValue="ভাড়া, বিল, বেতন ও স্টুডিও সামগ্রী"
               icon={TrendingUp}
               colorScheme="rose"
               isCurrency
             />
             <StatCard
-              title="নেট ক্যাশ ব্যালেন্স"
+              title="নেট ব্যালেন্স"
               value={lifetimeStats.netCashBalance}
-              subValue="প্রাপ্ত পেমেন্ট হতে ব্যয় বাদে স্থিতি"
               icon={ArrowUpRight}
               colorScheme="blue"
               isCurrency

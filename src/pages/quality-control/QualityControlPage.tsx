@@ -99,11 +99,8 @@ export const QualityControlPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <ShieldCheck className="h-6 w-6 text-emerald-400" />
-            <span>কোয়ালিটি কন্ট্রোল ও অনুমোদন হাব</span>
+            <span>কোয়ালিটি কন্ট্রোল</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            স্টুডিওর অডিও ও ভিডিও ফাইল নিরীক্ষা, কোয়ালিটি অনুমোদন ও রিভিশন পরিচালনা
-          </p>
         </div>
 
         <span className="px-3 py-1 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-400 text-xs font-semibold">
@@ -118,12 +115,9 @@ export const QualityControlPage: React.FC = () => {
             কোয়ালিটি কন্ট্রোল কিউ লোড হচ্ছে...
           </div>
         ) : qcOrders.length === 0 ? (
-          <div className="p-12 rounded-3xl bg-slate-900/60 border border-slate-800 text-center space-y-2">
-            <CheckCircle2 className="h-10 w-10 text-emerald-400 mx-auto opacity-70" />
-            <p className="text-sm font-bold text-white">কোয়ালিটি চেক সম্পূর্ণ!</p>
-            <p className="text-xs text-slate-400">
-              বর্তমানে কোনো ফাইল পর্যালোচনার অপেক্ষায় নেই। নতুন কাজ সাবমিট হলে এখানে প্রদর্শিত হবে।
-            </p>
+          <div className="p-10 rounded-3xl bg-slate-900/60 border border-slate-800 text-center space-y-2">
+            <CheckCircle2 className="h-9 w-9 text-emerald-400 mx-auto opacity-70" />
+            <p className="text-sm font-bold text-white">কোনো ফাইল বাকি নেই</p>
           </div>
         ) : (
           qcOrders.map((ord) => {

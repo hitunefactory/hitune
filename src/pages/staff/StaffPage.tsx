@@ -74,11 +74,8 @@ export const StaffPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Users className="h-6 w-6 text-purple-400" />
-            <span>টিম সদস্য ও ভূমিকা ব্যবস্থাপনা</span>
+            <span>টিম ও ইউজার</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            স্টুডিও কর্মী তালিকা, বিভাগ বণ্টন ও পারমিশন কন্ট্রোল
-          </p>
         </div>
 
         <button

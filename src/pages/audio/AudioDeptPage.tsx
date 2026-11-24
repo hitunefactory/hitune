@@ -135,11 +135,8 @@ export const AudioDeptPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Headphones className="h-6 w-6 text-blue-500" />
-            <span>অডিও প্রোডাকশন বিভাগ</span>
+            <span>অডিও বিভাগ</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            ভয়েস ওভার, রেকর্ডিং, মিউজিক মিক্সিং ও মাস্টার্ড অডিও সাবমিশন
-          </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -179,10 +176,10 @@ export const AudioDeptPage: React.FC = () => {
 
       {/* Target Order Notification Banner if coming from notification link */}
       {targetOrderId && (
-        <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-between gap-3 text-xs text-blue-300">
+        <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-between gap-3 text-xs text-blue-300">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-blue-400 shrink-0" />
-            <span>আপনি নোটিফিকেশন থেকে নির্দিষ্ট অর্ডারে প্রবেশ করেছেন। সংশ্লিষ্ট অর্ডারটি নিচে চিহ্নিত করা হয়েছে।</span>
+            <span>চিহ্নিত অর্ডারটি নিচে দেখুন</span>
           </div>
           <Link
             to="/audio"

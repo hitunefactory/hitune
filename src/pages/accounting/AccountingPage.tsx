@@ -157,11 +157,8 @@ export const AccountingPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Wallet className="h-6 w-6 text-emerald-400" />
-            <span>স্টুডিও হিসাব ও আর্থিক ব্যবস্থাপনা</span>
+            <span>হিসাব ও পেমেন্ট</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            অর্ডার পেমেন্ট প্রাপ্তি, স্টুডিও পরিচালনা ব্যয় ও নেট ক্যাশ হিসাব
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">
@@ -170,7 +167,7 @@ export const AccountingPage: React.FC = () => {
             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-xl shadow-md transition"
           >
             <Plus className="h-4 w-4" />
-            <span>নতুন খরচ এন্ট্রি</span>
+            <span>নতুন খরচ</span>
           </button>
 
           <button
@@ -184,41 +181,37 @@ export const AccountingPage: React.FC = () => {
       </div>
 
       {/* Financial Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-600/15 to-emerald-500/5 border border-emerald-500/30 space-y-1 shadow-lg">
-          <span className="text-xs text-emerald-300 font-medium block">আদায়কৃত পেমেন্ট (ক্যাশ আয়)</span>
-          <div className="text-2xl font-bold text-white flex items-baseline gap-1">
+          <span className="text-xs text-emerald-300 font-medium block">আদায়কৃত পেমেন্ট</span>
+          <div className="text-xl sm:text-2xl font-bold text-white flex items-baseline gap-1">
             <span className="text-emerald-400">৳</span>
             <span>{formatBengaliNumber(totalReceived)}</span>
           </div>
-          <span className="text-[11px] text-slate-400 block">যাচাইকৃত ক্যাশ, বিকাশ ও ব্যাংক জমা</span>
         </div>
 
         <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-600/15 to-amber-500/5 border border-amber-500/30 space-y-1 shadow-lg">
-          <span className="text-xs text-amber-300 font-medium block">বকেয়া প্রাপ্য টাকা</span>
-          <div className="text-2xl font-bold text-white flex items-baseline gap-1">
+          <span className="text-xs text-amber-300 font-medium block">বকেয়া টাকা</span>
+          <div className="text-xl sm:text-2xl font-bold text-white flex items-baseline gap-1">
             <span className="text-amber-400">৳</span>
             <span>{formatBengaliNumber(totalDue)}</span>
           </div>
-          <span className="text-[11px] text-slate-400 block">ক্লায়েন্টদের কাছে মোট অবশিষ্ট বকেয়া</span>
         </div>
 
         <div className="p-4 rounded-2xl bg-gradient-to-br from-rose-600/15 to-rose-500/5 border border-rose-500/30 space-y-1 shadow-lg">
-          <span className="text-xs text-rose-300 font-medium block">মোট স্টুডিও খরচ</span>
-          <div className="text-2xl font-bold text-white flex items-baseline gap-1">
+          <span className="text-xs text-rose-300 font-medium block">মোট খরচ</span>
+          <div className="text-xl sm:text-2xl font-bold text-white flex items-baseline gap-1">
             <span className="text-rose-400">৳</span>
             <span>{formatBengaliNumber(totalExpenses)}</span>
           </div>
-          <span className="text-[11px] text-slate-400 block">ভাড়া, বিদ্যুৎ, বেতন ও রক্ষণাবেক্ষণ ব্যয়</span>
         </div>
 
         <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-600/15 to-blue-500/5 border border-blue-500/30 space-y-1 shadow-lg">
-          <span className="text-xs text-blue-300 font-medium block">নেট ক্যাশ ব্যালেন্স</span>
-          <div className="text-2xl font-bold text-white flex items-baseline gap-1">
+          <span className="text-xs text-blue-300 font-medium block">নেট ব্যালেন্স</span>
+          <div className="text-xl sm:text-2xl font-bold text-white flex items-baseline gap-1">
             <span className="text-blue-400">৳</span>
             <span>{formatBengaliNumber(netCash)}</span>
           </div>
-          <span className="text-[11px] text-slate-400 block">মোট প্রাপ্তি হতে ব্যয় বাদে স্থিতি</span>
         </div>
       </div>
 

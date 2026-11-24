@@ -133,11 +133,11 @@ export const OrdersListPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <FolderKanban className="h-6 w-6 text-blue-500" />
-            <span>অর্ডার তালিকা ও ব্যবস্থাপনা</span>
+            <span>অর্ডার তালিকা</span>
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300">
+              {formatBengaliNumber(filteredOrders.length)} টি
+            </span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            সর্বমোট {formatBengaliNumber(filteredOrders.length)} টি অর্ডার প্রদর্শিত হচ্ছে
-          </p>
         </div>
 
         <Link

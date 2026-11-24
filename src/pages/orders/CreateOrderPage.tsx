@@ -5,12 +5,6 @@ import {
   CheckCircle2,
   Music2,
   Video,
-  DollarSign,
-  Vote,
-  Mic,
-  GraduationCap,
-  Sparkles,
-  Phone,
   MessageCircle,
   ChevronRight,
   ChevronLeft,
@@ -310,9 +304,7 @@ export const CreateOrderPage: React.FC = () => {
           <div>
             <h1 className="text-lg sm:text-xl font-black text-white flex items-center gap-2">
               <span>নতুন অর্ডার গ্রহণ</span>
-              <Sparkles className="h-4 w-4 text-blue-400" />
             </h1>
-            <p className="text-[11px] text-slate-400">সহজ ৪ ধাপে দ্রুত অর্ডার এন্ট্রি করুন</p>
           </div>
         </div>
 
@@ -390,15 +382,12 @@ export const CreateOrderPage: React.FC = () => {
       {step === 1 && (
         <div className="p-5 sm:p-6 rounded-3xl bg-[#0f172a] border border-slate-800 shadow-xl space-y-4 animate-in fade-in duration-200">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-600 text-white text-xs font-bold">
-                  ১
-                </span>
-                <span>কাজের ক্যাটাগরি বাছাই করুন</span>
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">যে কাজের অর্ডার নিতে চান সেটিতে ক্লিক করুন</p>
-            </div>
+            <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-600 text-white text-xs font-bold">
+                ১
+              </span>
+              <span>কাজের ক্যাটাগরি</span>
+            </h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -412,13 +401,10 @@ export const CreateOrderPage: React.FC = () => {
               }`}
             >
               <div className="flex items-center gap-3.5">
-                <div className="h-12 w-12 rounded-2xl bg-blue-500/15 text-blue-400 flex items-center justify-center text-2xl shrink-0">
+                <div className="h-11 w-11 rounded-2xl bg-blue-500/15 text-blue-400 flex items-center justify-center text-xl shrink-0">
                   🗳️
                 </div>
-                <div>
-                  <h3 className="font-bold text-sm text-white">নির্বাচনী প্রচারণা গান</h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">মেয়র, চেয়ারম্যান ও মেম্বার নির্বাচন</p>
-                </div>
+                <h3 className="font-bold text-sm text-white">নির্বাচনী প্রচারণা গান</h3>
               </div>
               {primaryType === 'ELECTION' && (
                 <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center shrink-0">
@@ -437,13 +423,10 @@ export const CreateOrderPage: React.FC = () => {
               }`}
             >
               <div className="flex items-center gap-3.5">
-                <div className="h-12 w-12 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-2xl shrink-0">
+                <div className="h-11 w-11 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-xl shrink-0">
                   🎓
                 </div>
-                <div>
-                  <h3 className="font-bold text-sm text-white">মাদ্রাসা / স্কুল ভর্তি মাইকিং</h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">নতুন শিক্ষাবর্ষের ভর্তি প্রচারণা</p>
-                </div>
+                <h3 className="font-bold text-sm text-white">মাদ্রাসা / স্কুল ভর্তি</h3>
               </div>
               {primaryType === 'ADMISSION' && (
                 <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
@@ -462,13 +445,10 @@ export const CreateOrderPage: React.FC = () => {
               }`}
             >
               <div className="flex items-center gap-3.5">
-                <div className="h-12 w-12 rounded-2xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-2xl shrink-0">
+                <div className="h-11 w-11 rounded-2xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-xl shrink-0">
                   📢
                 </div>
-                <div>
-                  <h3 className="font-bold text-sm text-white">ওয়াজ মাহফিল মাইকিং</h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">তাফসিরুল কুরআন ও বার্ষিক মাহফিল</p>
-                </div>
+                <h3 className="font-bold text-sm text-white">ওয়াজ মাহফিল</h3>
               </div>
               {primaryType === 'WAZ' && (
                 <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0">
@@ -487,13 +467,10 @@ export const CreateOrderPage: React.FC = () => {
               }`}
             >
               <div className="flex items-center gap-3.5">
-                <div className="h-12 w-12 rounded-2xl bg-purple-500/15 text-purple-400 flex items-center justify-center text-2xl shrink-0">
+                <div className="h-11 w-11 rounded-2xl bg-purple-500/15 text-purple-400 flex items-center justify-center text-xl shrink-0">
                   ✨
                 </div>
-                <div>
-                  <h3 className="font-bold text-sm text-white">অন্যান্য কাস্টম কাজ</h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">গজল, নাশিদ বা সাধারণ বিজ্ঞাপন</p>
-                </div>
+                <h3 className="font-bold text-sm text-white">অন্যান্য কাজ</h3>
               </div>
               {primaryType === 'CUSTOM' && (
                 <div className="w-6 h-6 rounded-full bg-purple-500 text-white flex items-center justify-center shrink-0">
@@ -514,7 +491,7 @@ export const CreateOrderPage: React.FC = () => {
                 }}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-bold rounded-2xl shadow-lg shadow-blue-600/30 transition transform active:scale-95 cursor-pointer"
               >
-                <span>পরবর্তী ধাপ (কাজের মাধ্যম)</span>
+                <span>পরবর্তী ধাপ</span>
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
@@ -523,73 +500,63 @@ export const CreateOrderPage: React.FC = () => {
       )}
 
       {/* ========================================================= */}
-      {/* ধাপ ২: কাজের মাধ্যম সিলেক্ট (শুধু অডিও vs অডিও ও ভিডিও) */}
+      {/* ধাপ ২: কাজের মাধ্যম সিলেক্ট (শুধু অডিও vs অডিও এবং ভিডিওসহ) */}
       {/* ========================================================= */}
       {step === 2 && (
         <div className="p-5 sm:p-6 rounded-3xl bg-[#0f172a] border border-slate-800 shadow-xl space-y-4 animate-in fade-in duration-200">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-600 text-white text-xs font-bold">
-                  ২
-                </span>
-                <span>কাজের মাধ্যম নির্বাচন করুন</span>
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                নির্বাচিত ক্যাটাগরি: <strong className="text-blue-400">{categoryLabel}</strong>
-              </p>
-            </div>
+            <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-600 text-white text-xs font-bold">
+                ২
+              </span>
+              <span>কাজের মাধ্যম</span>
+            </h2>
+            <span className="text-xs font-semibold text-blue-400">{categoryLabel}</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
             {/* Option A: Audio Only */}
             <div
               onClick={() => handleSelectFormat('AUDIO_ONLY')}
-              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-3 active:scale-[0.98] ${
+              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex items-center justify-between gap-3 active:scale-[0.98] ${
                 workFormat === 'AUDIO_ONLY'
                   ? 'bg-blue-950/60 border-blue-500 shadow-lg shadow-blue-500/15 ring-2 ring-blue-500/40'
                   : 'bg-slate-950/70 border-slate-800/90 hover:border-slate-700 hover:bg-slate-900/60'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <div className="h-11 w-11 rounded-2xl bg-blue-500/15 text-blue-400 flex items-center justify-center">
-                  <Music2 className="h-6 w-6" />
+              <div className="flex items-center gap-3.5">
+                <div className="h-11 w-11 rounded-2xl bg-blue-500/15 text-blue-400 flex items-center justify-center shrink-0">
+                  <Music2 className="h-5 w-5" />
                 </div>
-                {workFormat === 'AUDIO_ONLY' && (
-                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center">
-                    <Check className="h-3.5 w-3.5" />
-                  </div>
-                )}
+                <h4 className="font-bold text-sm sm:text-base text-white">শুধু অডিও</h4>
               </div>
-              <div>
-                <h4 className="font-bold text-sm text-white">শুধু অডিও (Audio Only)</h4>
-                <p className="text-xs text-slate-400 mt-1">ভয়েস ওভার, সাউন্ড ডিজাইন ও অডিও প্রোডাকশন</p>
-              </div>
+              {workFormat === 'AUDIO_ONLY' && (
+                <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center shrink-0">
+                  <Check className="h-3.5 w-3.5" />
+                </div>
+              )}
             </div>
 
             {/* Option B: Audio & Video */}
             <div
               onClick={() => handleSelectFormat('AUDIO_VIDEO')}
-              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-3 active:scale-[0.98] ${
+              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex items-center justify-between gap-3 active:scale-[0.98] ${
                 workFormat === 'AUDIO_VIDEO'
                   ? 'bg-cyan-950/60 border-cyan-500 shadow-lg shadow-cyan-500/15 ring-2 ring-cyan-500/40'
                   : 'bg-slate-950/70 border-slate-800/90 hover:border-slate-700 hover:bg-slate-900/60'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <div className="h-11 w-11 rounded-2xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center">
-                  <Video className="h-6 w-6" />
+              <div className="flex items-center gap-3.5">
+                <div className="h-11 w-11 rounded-2xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center shrink-0">
+                  <Video className="h-5 w-5" />
                 </div>
-                {workFormat === 'AUDIO_VIDEO' && (
-                  <div className="w-6 h-6 rounded-full bg-cyan-500 text-white flex items-center justify-center">
-                    <Check className="h-3.5 w-3.5" />
-                  </div>
-                )}
+                <h4 className="font-bold text-sm sm:text-base text-white">অডিও এবং ভিডিওসহ</h4>
               </div>
-              <div>
-                <h4 className="font-bold text-sm text-white">অডিও এবং ভিডিওসহ (Audio & Video)</h4>
-                <p className="text-xs text-slate-400 mt-1">সাউন্ড প্রোডাকশন + পূর্ণাঙ্গ ভিডিও এডিটিং</p>
-              </div>
+              {workFormat === 'AUDIO_VIDEO' && (
+                <div className="w-6 h-6 rounded-full bg-cyan-500 text-white flex items-center justify-center shrink-0">
+                  <Check className="h-3.5 w-3.5" />
+                </div>
+              )}
             </div>
           </div>
 
@@ -617,7 +584,7 @@ export const CreateOrderPage: React.FC = () => {
               }}
               className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-bold rounded-2xl shadow-lg shadow-blue-600/30 transition transform active:scale-95 cursor-pointer"
             >
-              <span>পরবর্তী ধাপ (চুক্তি মূল্য)</span>
+              <span>পরবর্তী ধাপ</span>
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
@@ -630,15 +597,12 @@ export const CreateOrderPage: React.FC = () => {
       {step === 3 && (
         <div className="p-5 sm:p-6 rounded-3xl bg-[#0f172a] border border-slate-800 shadow-xl space-y-5 animate-in fade-in duration-200">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-600 text-white text-xs font-bold">
-                  ৩
-                </span>
-                <span>কাজের চুক্তি মূল্য ও অগ্রিম জমা</span>
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">মোট টাকার পরিমাণ এবং অগ্রিম জমার হিসাব লিখুন</p>
-            </div>
+            <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-600 text-white text-xs font-bold">
+                ৩
+              </span>
+              <span>চুক্তি মূল্য ও অগ্রিম</span>
+            </h2>
           </div>
 
           <div className="space-y-4">
@@ -672,7 +636,7 @@ export const CreateOrderPage: React.FC = () => {
             {/* Advance Paid Input */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-300">
-                অগ্রিম পরিশোধ / জমা (৳) <span className="text-slate-500 text-[11px]">(যদি থাকে)</span>
+                অগ্রিম জমা (৳)
               </label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-base">
@@ -683,7 +647,7 @@ export const CreateOrderPage: React.FC = () => {
                   inputMode="numeric"
                   value={advancePaid}
                   onChange={(e) => setAdvancePaid(e.target.value === '' ? '' : Number(e.target.value))}
-                  placeholder="যেমন: ২০০০ (না থাকলে খালি রাখুন)"
+                  placeholder="অগ্রিম থাকলে লিখুন"
                   min={0}
                   className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-700/80 rounded-2xl text-base sm:text-lg font-bold text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500"
                 />
@@ -692,16 +656,13 @@ export const CreateOrderPage: React.FC = () => {
 
             {/* Live Due Calculation Card */}
             <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
-              <div>
-                <span className="text-xs text-slate-400 block">বর্তমান অবশিষ্ট বকেয়া</span>
-                <span className="text-[11px] text-slate-500">চুক্তি মূল্য থেকে অগ্রিম বাদ দিয়ে</span>
-              </div>
+              <span className="text-xs font-semibold text-slate-300">বকেয়া</span>
               <div className="text-right">
                 <div className="text-lg sm:text-xl font-black text-amber-400">
                   {formatCurrency(dueBalance)}
                 </div>
                 {dueBalance === 0 && numTotal > 0 && (
-                  <span className="text-[10px] text-emerald-400 font-semibold">সম্পূর্ণ পরিশোধিত</span>
+                  <span className="text-[10px] text-emerald-400 font-semibold">পরিশোধিত</span>
                 )}
               </div>
             </div>
@@ -727,7 +688,7 @@ export const CreateOrderPage: React.FC = () => {
               onClick={handleProceedToDetails}
               className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-bold rounded-2xl shadow-lg shadow-blue-600/30 transition transform active:scale-95 cursor-pointer"
             >
-              <span>পরবর্তী ধাপ (প্রয়োজনীয় তথ্য)</span>
+              <span>পরবর্তী ধাপ</span>
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
@@ -741,24 +702,19 @@ export const CreateOrderPage: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-5 animate-in fade-in duration-200">
           <div className="p-5 sm:p-6 rounded-3xl bg-[#0f172a] border border-slate-800 shadow-xl space-y-5">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                  <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-600 text-white text-xs font-bold">
-                    ৪
-                  </span>
-                  <span>প্রয়োজনীয় তথ্যাদি লিখুন</span>
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  ক্লায়েন্টের ফোন নম্বর ও কাজের বিবরণ দিন
-                </p>
-              </div>
+              <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-600 text-white text-xs font-bold">
+                  ৪
+                </span>
+                <span>প্রয়োজনীয় তথ্যাদি</span>
+              </h2>
             </div>
 
             {/* 1. Client WhatsApp Phone - Always prominent at top */}
             <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 space-y-1.5">
               <label className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
                 <MessageCircle className="h-4 w-4 text-emerald-400" />
-                <span>ক্লায়েন্টের WhatsApp / মোবাইল নম্বর</span>
+                <span>WhatsApp / মোবাইল নম্বর</span>
                 <span className="text-rose-500">*</span>
               </label>
               <input
@@ -770,7 +726,6 @@ export const CreateOrderPage: React.FC = () => {
                 required
                 className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/60 font-mono"
               />
-              <p className="text-[10px] text-slate-400">এই নম্বরে কাজের আপডেট ও ফাইল পাঠানো হবে</p>
             </div>
 
             {/* 2. Category-Specific Fields */}
@@ -826,24 +781,24 @@ export const CreateOrderPage: React.FC = () => {
                   </div>
 
                   <div className="space-y-1 sm:col-span-2">
-                    <label className="text-xs font-semibold text-slate-300">গানের শিরোনাম (যদি নির্দিষ্ট থাকে)</label>
+                    <label className="text-xs font-semibold text-slate-300">গানের নাম</label>
                     <input
                       type="text"
                       value={songTitle}
                       onChange={(e) => setSongTitle(e.target.value)}
-                      placeholder="খালি রাখলে প্রার্থীর নামে স্বয়ংক্রিয় তৈরি হবে"
+                      placeholder="গানের শিরোনাম (খালি রাখলে প্রার্থীর নামে তৈরি হবে)"
                       className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">স্লোগান বা বিশেষ নির্দেশনা (ঐচ্ছিক)</label>
+                  <label className="text-xs font-semibold text-slate-300">স্লোগান / বিশেষ নোট</label>
                   <textarea
                     value={campaignSlogan}
                     onChange={(e) => setCampaignSlogan(e.target.value)}
                     rows={2}
-                    placeholder="যেমন: উন্নয়নের ধারা অব্যাহত রাখতে সৎ ও যোগ্য প্রার্থীকে জয়যুক্ত করুন..."
+                    placeholder="প্রয়োজনীয় নোট..."
                     className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
                   />
                 </div>
@@ -994,7 +949,7 @@ export const CreateOrderPage: React.FC = () => {
             <div className="pt-2 border-t border-slate-800/80">
               <label className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 mb-1.5">
                 <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                <span>ডেলিভারির সম্ভাব্য তারিখ (ঐচ্ছিক)</span>
+                <span>ডেলিভারি তারিখ</span>
               </label>
               <input
                 type="date"
@@ -1005,10 +960,7 @@ export const CreateOrderPage: React.FC = () => {
             </div>
 
             {/* Order Summary Recap Card */}
-            <div className="p-3.5 rounded-2xl bg-slate-950/90 border border-slate-800/80 text-xs space-y-2">
-              <div className="font-semibold text-slate-300 text-[11px] uppercase tracking-wider">
-                অর্ডার সংক্ষেপ
-              </div>
+            <div className="p-3.5 rounded-2xl bg-slate-950/90 border border-slate-800/80 text-xs">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-slate-400 text-[11px]">
                 <div>
                   ক্যাটাগরি: <strong className="text-white block">{categoryLabel}</strong>
@@ -1041,7 +993,7 @@ export const CreateOrderPage: React.FC = () => {
               className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 transition"
             >
               <ChevronLeft className="h-4 w-4" />
-              <span>পূর্ববর্তী ধাপ (চুক্তি মূল্য)</span>
+              <span>পূর্ববর্তী ধাপ</span>
             </button>
 
             <button
@@ -1050,7 +1002,7 @@ export const CreateOrderPage: React.FC = () => {
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-2xl text-xs sm:text-sm font-black shadow-lg shadow-emerald-600/30 transition transform active:scale-95 cursor-pointer disabled:opacity-50"
             >
               <CheckCircle2 className="h-4 w-4" />
-              <span>{submitting ? 'অর্ডার এন্ট্রি হচ্ছে...' : '✅ অর্ডার কনফার্ম ও এন্ট্রি করুন'}</span>
+              <span>{submitting ? 'অর্ডার এন্ট্রি হচ্ছে...' : 'অর্ডার কনফার্ম করুন'}</span>
             </button>
           </div>
         </form>
