@@ -26,6 +26,7 @@ import {
   Edit3,
   Printer,
   Play,
+  Trash2,
 } from 'lucide-react'
 import { dataService } from '../../services/dataService'
 import { Order, TaskSubmission, Revision, OrderComment, Profile, PaymentMethod } from '../../types/database'
@@ -65,9 +66,26 @@ export const OrderDetailPage: React.FC = () => {
   const [recipientPhone, setRecipientPhone] = useState('')
   const [deliveryNotes, setDeliveryNotes] = useState('')
 
-  // Invoice & Edit Order Modals
+  // Invoice, Edit & Delete Order Modals
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDeleteOrder = async () => {
+    if (!order) return
+    setDeleting(true)
+    try {
+      await dataService.deleteOrder(order.id)
+      navigate('/orders')
+    } catch (err) {
+      console.error('Delete order failed:', err)
+      alert('অর্ডার মুছে ফেলতে সমস্যা হয়েছে')
+    } finally {
+      setDeleting(false)
+      setShowDeleteModal(false)
+    }
+  }
 
   // Tabs
   const [activeTab, setActiveTab] = useState<'details' | 'submissions' | 'comments' | 'payments'>('details')
@@ -264,8 +282,8 @@ export const OrderDetailPage: React.FC = () => {
             <span>মানি রসিদ ও ইনভয়েস</span>
           </button>
 
-          {/* Edit Order Button for Super Admin & Order Manager */}
-          {hasRole(['SUPER_ADMIN', 'ORDER_MANAGER']) && (
+          {/* Edit Order Button for Super Admin, Order Manager & Delivery Manager */}
+          {hasRole(['SUPER_ADMIN', 'ORDER_MANAGER', 'DELIVERY_MANAGER']) && (
             <button
               onClick={() => setShowEditModal(true)}
               className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-semibold rounded-xl shadow transition cursor-pointer"
@@ -273,6 +291,18 @@ export const OrderDetailPage: React.FC = () => {
             >
               <Edit3 className="h-3.5 w-3.5 text-amber-400" />
               <span>অর্ডার সম্পাদনা</span>
+            </button>
+          )}
+
+          {/* Delete Order Button for Super Admin, Order Manager & Delivery Manager */}
+          {hasRole(['SUPER_ADMIN', 'ORDER_MANAGER', 'DELIVERY_MANAGER']) && (
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/40 text-rose-300 text-xs font-semibold rounded-xl shadow transition cursor-pointer"
+              title="অর্ডারটি স্থায়ীভাবে মুছে ফেলুন"
+            >
+              <Trash2 className="h-3.5 w-3.5 text-rose-400" />
+              <span>অর্ডার মুছুন</span>
             </button>
           )}
 
@@ -920,6 +950,50 @@ export const OrderDetailPage: React.FC = () => {
           staffList={staffList}
           onOrderUpdated={loadOrder}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && order && (
+        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-[#0f172a] border border-rose-500/30 rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-sm">অর্ডারটি কি মুছে ফেলতে চান?</h3>
+                <p className="text-xs text-rose-400 font-mono font-semibold">{order.order_number}</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800/80 space-y-1.5 text-xs">
+              <div className="font-semibold text-slate-200">{order.title}</div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                সতর্কতা: একবার মুছে ফেললে এই অর্ডারের তথ্য, পেমেন্ট হিসাব ও অভ্যন্তরীণ আলোচনা স্থায়ীভাবে অপসারিত হবে।
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition cursor-pointer"
+              >
+                বাতিল
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteOrder}
+                disabled={deleting}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-lg shadow-rose-600/30 transition cursor-pointer"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>{deleting ? 'মুছে ফেলা হচ্ছে...' : 'হ্যাঁ, মুছে ফেলুন'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

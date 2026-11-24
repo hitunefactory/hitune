@@ -10,17 +10,27 @@ import {
   CheckCheck,
   AlertCircle,
   FileCheck,
+  Edit3,
+  Trash2,
 } from 'lucide-react'
 import { dataService } from '../../services/dataService'
-import { Order } from '../../types/database'
+import { Order, Profile } from '../../types/database'
 import { StatusBadge, PaymentBadge } from '../../components/ui/StatusBadge'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatBengaliDate, formatBengaliNumber, formatCurrency } from '../../lib/utils'
+import { EditOrderModal } from '../../components/orders/EditOrderModal'
 
 export const DeliveryPage: React.FC = () => {
-  const { user } = useAuth()
+  const { user, hasRole } = useAuth()
+  const canManageOrders = hasRole(['SUPER_ADMIN', 'ORDER_MANAGER', 'DELIVERY_MANAGER'])
   const [orders, setOrders] = useState<Order[]>([])
+  const [staffList, setStaffList] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Edit & Delete Modals
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null)
+  const [deletingOrder, setDeletingOrder] = useState<Order | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   // Delivery Modal
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
@@ -33,7 +43,11 @@ export const DeliveryPage: React.FC = () => {
   const loadDeliveryOrders = async () => {
     setLoading(true)
     try {
-      const allOrders = await dataService.getOrders()
+      const [allOrders, staff] = await Promise.all([
+        dataService.getOrders(),
+        dataService.getStaff(),
+      ])
+      setStaffList(staff)
       // Filter for ready for delivery or delivered
       const list = allOrders.filter(
         (o) => o.overall_status === 'READY_FOR_DELIVERY' || o.overall_status === 'DELIVERED'
@@ -43,6 +57,21 @@ export const DeliveryPage: React.FC = () => {
       console.error('Failed to load delivery orders:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDeleteOrder = async () => {
+    if (!deletingOrder) return
+    setDeleting(true)
+    try {
+      await dataService.deleteOrder(deletingOrder.id)
+      setDeletingOrder(null)
+      await loadDeliveryOrders()
+    } catch (err) {
+      console.error('Delete order failed:', err)
+      alert('অর্ডার মুছে ফেলতে সমস্যা হয়েছে')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -148,7 +177,7 @@ export const DeliveryPage: React.FC = () => {
                       setRecipientName(ord.client_name)
                       setRecipientPhone(ord.client_phone)
                     }}
-                    className="flex-1 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+                    className="flex-1 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <CheckCheck className="h-4 w-4" />
                     <span>ডেলিভারি সম্পন্ন করুন</span>
@@ -158,8 +187,29 @@ export const DeliveryPage: React.FC = () => {
                     to={`/orders/${ord.id}`}
                     className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition"
                   >
-                    ফাইল দেখুন
+                    বিস্তারিত
                   </Link>
+
+                  {canManageOrders && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setEditingOrder(ord)}
+                        className="p-2 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700/80 rounded-xl text-xs transition cursor-pointer"
+                        title="অর্ডার সম্পাদনা"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeletingOrder(ord)}
+                        className="p-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 border border-rose-500/30 rounded-xl text-xs transition cursor-pointer"
+                        title="অর্ডার মুছুন"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
@@ -207,12 +257,34 @@ export const DeliveryPage: React.FC = () => {
                       <StatusBadge status={ord.overall_status} />
                     </td>
                     <td className="py-3 px-4 text-center whitespace-nowrap">
-                      <Link
-                        to={`/orders/${ord.id}`}
-                        className="px-3 py-1.5 rounded-xl bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white transition font-medium text-xs"
-                      >
-                        বিস্তারিত
-                      </Link>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <Link
+                          to={`/orders/${ord.id}`}
+                          className="px-3 py-1.5 rounded-xl bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white transition font-medium text-xs"
+                        >
+                          বিস্তারিত
+                        </Link>
+                        {canManageOrders && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setEditingOrder(ord)}
+                              className="p-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700/80 rounded-xl text-xs transition cursor-pointer"
+                              title="অর্ডার সম্পাদনা"
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingOrder(ord)}
+                              className="p-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 border border-rose-500/30 rounded-xl text-xs transition cursor-pointer"
+                              title="অর্ডার মুছুন"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -300,6 +372,61 @@ export const DeliveryPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Order Modal */}
+      {editingOrder && (
+        <EditOrderModal
+          isOpen={Boolean(editingOrder)}
+          onClose={() => setEditingOrder(null)}
+          order={editingOrder}
+          staffList={staffList}
+          onOrderUpdated={() => loadDeliveryOrders()}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingOrder && (
+        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-[#0f172a] border border-rose-500/30 rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-sm">অর্ডারটি কি মুছে ফেলতে চান?</h3>
+                <p className="text-xs text-rose-400 font-mono font-semibold">{deletingOrder.order_number}</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800/80 space-y-1.5 text-xs">
+              <div className="font-semibold text-slate-200">{deletingOrder.title}</div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                সতর্কতা: একবার মুছে ফেললে এই অর্ডারের তথ্য, পেমেন্ট হিসাব ও অভ্যন্তরীণ আলোচনা স্থায়ীভাবে অপসারিত হবে।
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setDeletingOrder(null)}
+                disabled={deleting}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition cursor-pointer"
+              >
+                বাতিল
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteOrder}
+                disabled={deleting}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-lg shadow-rose-600/30 transition cursor-pointer"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>{deleting ? 'মুছে ফেলা হচ্ছে...' : 'হ্যাঁ, মুছে ফেলুন'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

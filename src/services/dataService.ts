@@ -772,6 +772,52 @@ class DataService {
     return this.orders[idx]
   }
 
+  async deleteOrder(orderId: string): Promise<boolean> {
+    const idx = this.orders.findIndex((o) => o.id === orderId)
+    if (idx === -1) return false
+
+    const orderToDelete = this.orders[idx]
+    this.orders.splice(idx, 1)
+    saveLocal(STORAGE_KEYS.ORDERS, this.orders)
+
+    // Remove local related data
+    delete this.comments[orderId]
+    delete this.submissions[orderId]
+    delete this.revisions[orderId]
+    saveLocal(STORAGE_KEYS.COMMENTS, this.comments)
+    saveLocal(STORAGE_KEYS.SUBMISSIONS, this.submissions)
+    saveLocal(STORAGE_KEYS.REVISIONS, this.revisions)
+
+    // Clean up payments locally
+    this.payments = this.payments.filter((p) => p.order_id !== orderId)
+    saveLocal(STORAGE_KEYS.PAYMENTS, this.payments)
+
+    if (await this.checkLiveSupport()) {
+      try {
+        const targetId = isUuid(orderId) ? orderId : orderToDelete.id
+        if (isUuid(targetId)) {
+          // Delete child records first to satisfy foreign key constraints
+          await Promise.allSettled([
+            supabase.from('order_details').delete().eq('order_id', targetId),
+            supabase.from('payments').delete().eq('order_id', targetId),
+            supabase.from('order_comments').delete().eq('order_id', targetId),
+            supabase.from('task_submissions').delete().eq('order_id', targetId),
+            supabase.from('revisions').delete().eq('order_id', targetId),
+          ])
+          // Delete the main order
+          await supabase.from('orders').delete().eq('id', targetId)
+        } else if (orderToDelete.order_number) {
+          await supabase.from('orders').delete().eq('order_number', orderToDelete.order_number)
+        }
+      } catch (err) {
+        console.warn('Supabase deleteOrder failed:', err)
+      }
+    }
+
+    window.dispatchEvent(new CustomEvent('hitune:data-synced'))
+    return true
+  }
+
   // -------------------------------------------------------------
   // SUBMISSIONS & QUALITY CONTROL
   // -------------------------------------------------------------
