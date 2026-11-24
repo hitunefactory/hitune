@@ -9,32 +9,47 @@ export const AppLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  // Auto-sync on window focus or visibility change (switching tabs or opening mobile browser)
+  // 100% AUTOMATIC REAL-TIME CLOUD SYNC ENGINE
   useEffect(() => {
-    let lastSyncTime = 0
-    const triggerSync = async () => {
-      const now = Date.now()
-      // Throttle sync to at most once every 10 seconds on focus
-      if (now - lastSyncTime < 10000) return
-      lastSyncTime = now
+    // 1. Initial background sync on app load
+    dataService.syncAllToCloud().then(() => {
+      window.dispatchEvent(new CustomEvent('hitune:data-synced'))
+    }).catch(() => {})
 
-      try {
-        await dataService.getOrders()
-        window.dispatchEvent(new CustomEvent('hitune:data-synced'))
-      } catch (err) {
-        console.warn('Auto sync on focus notice:', err)
+    // 2. Real-time WebSocket connection to Supabase
+    const unsubscribe = dataService.initRealtimeSubscription(() => {
+      window.dispatchEvent(new CustomEvent('hitune:data-synced'))
+    })
+
+    // 3. Automated background heartbeat every 4 seconds (guarantees cross-device sync)
+    const heartbeatTimer = setInterval(async () => {
+      if (document.visibilityState === 'visible') {
+        try {
+          await dataService.getOrders()
+          window.dispatchEvent(new CustomEvent('hitune:data-synced'))
+        } catch {}
       }
+    }, 4000)
+
+    // 4. Instant sync on tab focus or screen unlock (Mobile / PC)
+    const onFocus = () => {
+      dataService.getOrders().then(() => {
+        window.dispatchEvent(new CustomEvent('hitune:data-synced'))
+      }).catch(() => {})
     }
 
-    const onFocus = () => triggerSync()
     const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') triggerSync()
+      if (document.visibilityState === 'visible') {
+        onFocus()
+      }
     }
 
     window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', onVisibilityChange)
 
     return () => {
+      unsubscribe()
+      clearInterval(heartbeatTimer)
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }

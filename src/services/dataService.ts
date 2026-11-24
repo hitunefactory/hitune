@@ -81,6 +81,61 @@ class DataService {
   private revisions: Record<string, Revision[]> = loadLocal(STORAGE_KEYS.REVISIONS, {})
 
   private liveTablesAvailable: boolean | null = null
+  private realtimeChannel: any = null
+
+  initRealtimeSubscription(onUpdate?: () => void): () => void {
+    if (!isSupabaseConfigured) return () => {}
+    if (this.realtimeChannel) return () => {}
+
+    try {
+      this.realtimeChannel = supabase
+        .channel('hitune_live_cloud_sync')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'orders' },
+          async () => {
+            await this.getOrders()
+            if (onUpdate) onUpdate()
+            window.dispatchEvent(new CustomEvent('hitune:data-synced'))
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'payments' },
+          async () => {
+            await this.getPayments()
+            if (onUpdate) onUpdate()
+            window.dispatchEvent(new CustomEvent('hitune:data-synced'))
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'task_submissions' },
+          async () => {
+            if (onUpdate) onUpdate()
+            window.dispatchEvent(new CustomEvent('hitune:data-synced'))
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'notifications' },
+          async () => {
+            if (onUpdate) onUpdate()
+            window.dispatchEvent(new CustomEvent('hitune:data-synced'))
+          }
+        )
+        .subscribe()
+    } catch (err) {
+      console.warn('Realtime subscription error:', err)
+    }
+
+    return () => {
+      if (this.realtimeChannel) {
+        supabase.removeChannel(this.realtimeChannel)
+        this.realtimeChannel = null
+      }
+    }
+  }
 
   async checkLiveSupport(): Promise<boolean> {
     if (!isSupabaseConfigured) return false

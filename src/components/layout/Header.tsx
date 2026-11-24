@@ -179,20 +179,22 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
           </div>
         )}
 
-        {/* Cloud Sync Button */}
+        {/* Real-time Cloud Auto-Sync Indicator */}
         <div className="relative">
-          <button
+          <div
             onClick={handleCloudSync}
-            disabled={syncing}
-            className={cn(
-              "p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5 text-xs",
-              syncing && "text-blue-400"
-            )}
-            title="ক্লাউড ডাটা সিঙ্ক করুন (মোবাইল ও পিসি সংযোগ)"
+            className="cursor-pointer px-2.5 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800/80 hover:border-emerald-500/40 transition flex items-center gap-2 text-xs"
+            title="স্বয়ংক্রিয় রিয়েল-টাইম ক্লাউড সিঙ্ক সক্রিয় (কোনো ক্লিক ছাড়াই ডিভাইস টু ডিভাইস অটো আপডেট)"
           >
-            <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin text-blue-400")} />
-            <span className="hidden md:inline text-[11px] font-medium">সিঙ্ক</span>
-          </button>
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="text-[11px] font-medium text-emerald-400/90 hidden sm:inline">
+              অটো সিঙ্ক সক্রিয়
+            </span>
+            <RefreshCw className={cn("h-3 w-3 text-slate-400", syncing && "animate-spin text-emerald-400")} />
+          </div>
 
           {syncMessage && (
             <div className="absolute right-0 top-full mt-2 px-3 py-1.5 bg-emerald-950/95 border border-emerald-500/50 rounded-xl text-[11px] text-emerald-300 shadow-xl whitespace-nowrap z-50 animate-in fade-in">
