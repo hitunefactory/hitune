@@ -13,7 +13,6 @@ import {
   GraduationCap,
   Sparkles,
   Phone,
-  Calendar,
   MessageCircle,
   Layers,
   ChevronRight,
@@ -21,9 +20,9 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { dataService } from '../../services/dataService'
-import { OrderCategory, Profile, OrderPriority } from '../../types/database'
+import { OrderCategory, Profile } from '../../types/database'
 import { useAuth } from '../../contexts/AuthContext'
-import { formatBengaliNumber, formatCurrency, getLocalDateString } from '../../lib/utils'
+import { formatBengaliNumber, formatCurrency } from '../../lib/utils'
 
 type PrimaryOrderType = 'ELECTION' | 'ADMISSION' | 'WAZ' | 'CUSTOM'
 type WorkFormat = 'AUDIO_ONLY' | 'AUDIO_VIDEO'
@@ -48,14 +47,8 @@ export const CreateOrderPage: React.FC = () => {
   const [totalPrice, setTotalPrice] = useState<number | ''>('')
   const [advancePaid, setAdvancePaid] = useState<number | ''>('')
 
-  // 4. Common Contact & Delivery
+  // 4. Common Contact
   const [whatsappPhone, setWhatsappPhone] = useState('')
-  const [deliveryDate, setDeliveryDate] = useState(() => {
-    const d = new Date()
-    d.setDate(d.getDate() + 2)
-    return getLocalDateString(d)
-  })
-  const [priority, setPriority] = useState<OrderPriority>('NORMAL')
 
   // 5. Fields for Type 1: নির্বাচনী প্রচারণা গান
   const [songTitle, setSongTitle] = useState('')
@@ -220,8 +213,8 @@ export const CreateOrderPage: React.FC = () => {
         client_address: electionArea || mahfilLocation || institutionDetails || '',
         category_id: matchedCategory?.id || undefined,
         category: matchedCategory,
-        priority,
-        deadline: deliveryDate ? new Date(deliveryDate).toISOString() : null,
+        priority: 'NORMAL',
+        deadline: null,
         audio_required: isAudioRequired,
         video_required: isVideoRequired,
         total_amount: numTotal,
@@ -802,36 +795,7 @@ export const CreateOrderPage: React.FC = () => {
               </div>
             )}
 
-            {/* Delivery Date (Common) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2 border-t border-slate-800/80">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">ডেলিভারির সম্ভাব্য তারিখ</label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
-                  <input
-                    type="date"
-                    value={deliveryDate}
-                    onChange={(e) => setDeliveryDate(e.target.value)}
-                    required
-                    className="w-full pl-9 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">কাজের অগ্রাধিকার</label>
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value as OrderPriority)}
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="NORMAL">সাধারণ (Normal)</option>
-                  <option value="HIGH">জরুরি (High)</option>
-                  <option value="URGENT">অতি জরুরি (Urgent)</option>
-                  <option value="LOW">স্বাভাবিক (Low)</option>
-                </select>
-              </div>
-            </div>
           </div>
         )}
 
