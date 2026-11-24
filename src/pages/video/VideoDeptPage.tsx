@@ -21,8 +21,8 @@ import { useAuth } from '../../contexts/AuthContext'
 import { formatBengaliDate, formatBengaliNumber } from '../../lib/utils'
 
 export const VideoDeptPage: React.FC = () => {
-  const { user, hasRole } = useAuth()
-  const canAction = hasRole(['SUPER_ADMIN', 'VIDEO_EDITOR'])
+  const { user, currentRole } = useAuth()
+  const canAction = currentRole === 'VIDEO_EDITOR' || (currentRole === 'SUPER_ADMIN' && user?.role === 'SUPER_ADMIN')
   const [searchParams] = useSearchParams()
   const targetOrderId = searchParams.get('orderId')
 

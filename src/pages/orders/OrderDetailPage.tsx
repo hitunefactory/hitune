@@ -40,7 +40,9 @@ import { EditOrderModal } from '../../components/orders/EditOrderModal'
 export const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user, hasRole } = useAuth()
+  const { user, hasRole, currentRole } = useAuth()
+  const isAudioWorker = currentRole === 'AUDIO_DESIGNER' || (currentRole === 'SUPER_ADMIN' && user?.role === 'SUPER_ADMIN')
+  const isVideoWorker = currentRole === 'VIDEO_EDITOR' || (currentRole === 'SUPER_ADMIN' && user?.role === 'SUPER_ADMIN')
 
   const [order, setOrder] = useState<Order | null>(null)
   const [submissions, setSubmissions] = useState<TaskSubmission[]>([])
@@ -317,7 +319,7 @@ export const OrderDetailPage: React.FC = () => {
           )}
 
           {/* Workflow Action Buttons */}
-          {order.overall_status === 'AUDIO_PENDING' && hasRole(['SUPER_ADMIN', 'AUDIO_DESIGNER']) && (
+          {order.overall_status === 'AUDIO_PENDING' && isAudioWorker && (
             <button
               onClick={handleStartAudio}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-md transition cursor-pointer"
@@ -327,7 +329,7 @@ export const OrderDetailPage: React.FC = () => {
             </button>
           )}
 
-          {['AUDIO_IN_PROGRESS', 'AUDIO_REVISION', 'AUDIO_QC'].includes(order.overall_status) && hasRole(['SUPER_ADMIN', 'AUDIO_DESIGNER']) && (
+          {['AUDIO_IN_PROGRESS', 'AUDIO_REVISION', 'AUDIO_QC'].includes(order.overall_status) && isAudioWorker && (
             <button
               onClick={handleCompleteAudio}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-emerald-600/30 transition cursor-pointer"
@@ -337,7 +339,7 @@ export const OrderDetailPage: React.FC = () => {
             </button>
           )}
 
-          {order.overall_status === 'VIDEO_PENDING' && hasRole(['SUPER_ADMIN', 'VIDEO_EDITOR']) && (
+          {order.overall_status === 'VIDEO_PENDING' && isVideoWorker && (
             <button
               onClick={handleStartVideo}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold rounded-xl shadow-md transition cursor-pointer"
@@ -347,7 +349,7 @@ export const OrderDetailPage: React.FC = () => {
             </button>
           )}
 
-          {['VIDEO_IN_PROGRESS', 'VIDEO_REVISION', 'VIDEO_QC'].includes(order.overall_status) && hasRole(['SUPER_ADMIN', 'VIDEO_EDITOR']) && (
+          {['VIDEO_IN_PROGRESS', 'VIDEO_REVISION', 'VIDEO_QC'].includes(order.overall_status) && isVideoWorker && (
             <button
               onClick={handleCompleteVideo}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-emerald-600/30 transition cursor-pointer"

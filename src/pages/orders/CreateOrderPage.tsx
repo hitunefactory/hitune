@@ -1,23 +1,22 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
-  FolderPlus,
   ArrowLeft,
   CheckCircle2,
   Music2,
   Video,
   DollarSign,
-  User,
   Vote,
   Mic,
   GraduationCap,
   Sparkles,
   Phone,
   MessageCircle,
-  Layers,
   ChevronRight,
-  ShieldCheck,
+  ChevronLeft,
   AlertCircle,
+  Calendar,
+  Check,
 } from 'lucide-react'
 import { dataService } from '../../services/dataService'
 import { OrderCategory, Profile } from '../../types/database'
@@ -37,18 +36,22 @@ export const CreateOrderPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  // 1. Primary Order Type (নির্বাচনী প্রচারণা গান, মাদ্রাসা/স্কুল ভর্তি, ওয়াজ মাহফিল, অন্যান্য)
+  // Wizard Step: 1 = Category, 2 = Format, 3 = Price, 4 = Details & Confirm
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
+
+  // 1. Primary Order Type
   const [primaryType, setPrimaryType] = useState<PrimaryOrderType | null>(null)
 
-  // 2. Work Format (শুধু অডিও vs অডিও এবং ভিডিওসহ)
+  // 2. Work Format
   const [workFormat, setWorkFormat] = useState<WorkFormat>('AUDIO_ONLY')
 
   // 3. Pricing
   const [totalPrice, setTotalPrice] = useState<number | ''>('')
   const [advancePaid, setAdvancePaid] = useState<number | ''>('')
 
-  // 4. Common Contact
+  // 4. Common Contact & Deadline
   const [whatsappPhone, setWhatsappPhone] = useState('')
+  const [deadline, setDeadline] = useState('')
 
   // 5. Fields for Type 1: নির্বাচনী প্রচারণা গান
   const [songTitle, setSongTitle] = useState('')
@@ -104,13 +107,39 @@ export const CreateOrderPage: React.FC = () => {
     loadMeta()
   }, [])
 
-  // Auto-set work format when primary type changes
+  // Auto-set work format when primary type changes and auto-advance to step 2
   const handleSelectPrimaryType = (type: PrimaryOrderType) => {
     setPrimaryType(type)
     setError('')
     if (type === 'WAZ') {
       setWorkFormat('AUDIO_ONLY')
     }
+    // Smoothly transition to Step 2
+    setTimeout(() => {
+      setStep(2)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }, 180)
+  }
+
+  // Work format select with smooth transition to step 3
+  const handleSelectFormat = (fmt: WorkFormat) => {
+    setWorkFormat(fmt)
+    setError('')
+    setTimeout(() => {
+      setStep(3)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }, 180)
+  }
+
+  // Step 3 to Step 4 validation
+  const handleProceedToDetails = () => {
+    if (!totalPrice || Number(totalPrice) <= 0) {
+      setError('দয়া করে কাজের মোট চুক্তি মূল্য (প্রাইজ) লিখুন।')
+      return
+    }
+    setError('')
+    setStep(4)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   // Calculate Due Balance
@@ -127,11 +156,13 @@ export const CreateOrderPage: React.FC = () => {
     setError('')
 
     if (!primaryType) {
+      setStep(1)
       setError('দয়া করে প্রথমে কাজের ক্যাটাগরি নির্বাচন করুন।')
       return
     }
 
     if (!totalPrice || Number(totalPrice) <= 0) {
+      setStep(3)
       setError('দয়া করে কাজের চুক্তি মূল্য (প্রাইজ) লিখুন।')
       return
     }
@@ -214,7 +245,7 @@ export const CreateOrderPage: React.FC = () => {
         category_id: matchedCategory?.id || undefined,
         category: matchedCategory,
         priority: 'NORMAL',
-        deadline: null,
+        deadline: deadline || null,
         audio_required: isAudioRequired,
         video_required: isVideoRequired,
         total_amount: numTotal,
@@ -236,16 +267,37 @@ export const CreateOrderPage: React.FC = () => {
     }
   }
 
+  const categoryLabel =
+    primaryType === 'ELECTION'
+      ? 'নির্বাচনী প্রচারণা'
+      : primaryType === 'ADMISSION'
+      ? 'মাদ্রাসা / স্কুল ভর্তি'
+      : primaryType === 'WAZ'
+      ? 'মাহফিল মাইকিং'
+      : primaryType === 'CUSTOM'
+      ? 'কাস্টম কাজ'
+      : ''
+
+  const stepsList = [
+    { num: 1, label: 'ক্যাটাগরি' },
+    { num: 2, label: 'মাধ্যম' },
+    { num: 3, label: 'চুক্তি মূল্য' },
+    { num: 4, label: 'তথ্যাদি ও কনফার্ম' },
+  ]
+
   if (loading) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center text-slate-400 text-xs">
-        ফরম লোড হচ্ছে...
+        <div className="text-center space-y-2">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p>অর্ডার ফরম প্রস্তুত হচ্ছে...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 pb-12 animate-in fade-in duration-300">
+    <div className="max-w-2xl mx-auto space-y-5 pb-16 animate-in fade-in duration-200">
       {/* Top Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -253,282 +305,479 @@ export const CreateOrderPage: React.FC = () => {
             to="/orders"
             className="p-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-black text-white flex items-center gap-2">
               <span>নতুন অর্ডার গ্রহণ</span>
               <Sparkles className="h-4 w-4 text-blue-400" />
             </h1>
-            <p className="text-xs text-slate-400">কাজের ধরন অনুযায়ী সহজ ধাপে অর্ডার ডাটা এন্ট্রি করুন</p>
+            <p className="text-[11px] text-slate-400">সহজ ৪ ধাপে দ্রুত অর্ডার এন্ট্রি করুন</p>
           </div>
+        </div>
+
+        {/* Current Step Counter Badge */}
+        <div className="px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-bold flex items-center gap-1.5">
+          <span>ধাপ {formatBengaliNumber(step)} / ৪</span>
+        </div>
+      </div>
+
+      {/* Modern Stepper Progress Bar */}
+      <div className="p-3 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-md">
+        {/* Progress Bar Line */}
+        <div className="relative w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mb-3">
+          <div
+            className="h-full bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-400 transition-all duration-300 rounded-full"
+            style={{ width: `${(step / 4) * 100}%` }}
+          />
+        </div>
+
+        {/* Step Indicator Pills */}
+        <div className="grid grid-cols-4 gap-1 text-center">
+          {stepsList.map((s) => {
+            const isDone = s.num < step
+            const isCurrent = s.num === step
+            const isClickable = s.num < step || (s.num === 2 && primaryType) || (s.num === 3 && primaryType)
+
+            return (
+              <button
+                key={s.num}
+                type="button"
+                disabled={!isClickable}
+                onClick={() => {
+                  if (s.num === 4 && (!totalPrice || Number(totalPrice) <= 0)) {
+                    setError('দয়া করে চুক্তি মূল্য লিখুন।')
+                    return
+                  }
+                  setError('')
+                  setStep(s.num as any)
+                }}
+                className={`py-1.5 px-1 rounded-xl text-[10px] sm:text-xs font-semibold transition flex flex-col items-center justify-center gap-0.5 ${
+                  isCurrent
+                    ? 'bg-blue-600/20 text-blue-400 border border-blue-500/40 shadow-sm'
+                    : isDone
+                    ? 'text-emerald-400 hover:bg-slate-800/60 cursor-pointer'
+                    : 'text-slate-500 opacity-60 cursor-not-allowed'
+                }`}
+              >
+                <div className="flex items-center gap-1">
+                  {isDone ? (
+                    <Check className="h-3 w-3 text-emerald-400" />
+                  ) : (
+                    <span className="w-3.5 h-3.5 rounded-full bg-slate-800 text-[10px] flex items-center justify-center font-bold">
+                      {formatBengaliNumber(s.num)}
+                    </span>
+                  )}
+                  <span className="hidden sm:inline">{s.label}</span>
+                </div>
+                <span className="sm:hidden text-[9px] font-medium leading-none">{s.label}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
 
       {error && (
-        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2.5 shadow-lg">
+        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2.5 shadow-lg animate-in fade-in duration-200">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-
-        {/* ========================================================= */}
-        {/* ধাপ ১: মূল কাজের টাইপ নির্বাচন (3 Main Categories) */}
-        {/* ========================================================= */}
-        <div className="p-5 sm:p-6 rounded-3xl bg-[#0f172a] border border-slate-800 shadow-xl space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-blue-600/20 text-blue-400 font-bold flex items-center justify-center text-xs">
-              ১
-            </div>
+      {/* ========================================================= */}
+      {/* ধাপ ১: শুধু কাজের ক্যাটাগরি বাছাই */}
+      {/* ========================================================= */}
+      {step === 1 && (
+        <div className="p-5 sm:p-6 rounded-3xl bg-[#0f172a] border border-slate-800 shadow-xl space-y-4 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div>
-              <h2 className="text-sm font-bold text-white">কাজের ক্যাটাগরি পছন্দ করুন</h2>
-              <p className="text-[11px] text-slate-400">কোন ধরনের কাজের অর্ডার নিতে চান?</p>
+              <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-600 text-white text-xs font-bold">
+                  ১
+                </span>
+                <span>কাজের ক্যাটাগরি বাছাই করুন</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">যে কাজের অর্ডার নিতে চান সেটিতে ক্লিক করুন</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             {/* 1. Election */}
             <div
               onClick={() => handleSelectPrimaryType('ELECTION')}
-              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-3 ${primaryType === 'ELECTION'
-                  ? 'bg-blue-950/40 border-blue-500 shadow-lg shadow-blue-500/10 ring-2 ring-blue-500/30'
-                  : 'bg-slate-950/70 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60'
-                }`}
+              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex items-center justify-between gap-3 active:scale-[0.98] ${
+                primaryType === 'ELECTION'
+                  ? 'bg-blue-950/60 border-blue-500 shadow-lg shadow-blue-500/15 ring-2 ring-blue-500/40'
+                  : 'bg-slate-950/70 border-slate-800/90 hover:border-slate-700 hover:bg-slate-900/60'
+              }`}
             >
-              <div className="flex items-center justify-between">
-                <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-xl">
+              <div className="flex items-center gap-3.5">
+                <div className="h-12 w-12 rounded-2xl bg-blue-500/15 text-blue-400 flex items-center justify-center text-2xl shrink-0">
                   🗳️
                 </div>
-                {primaryType === 'ELECTION' && (
-                  <CheckCircle2 className="h-5 w-5 text-blue-400" />
-                )}
+                <div>
+                  <h3 className="font-bold text-sm text-white">নির্বাচনী প্রচারণা গান</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">মেয়র, চেয়ারম্যান ও মেম্বার নির্বাচন</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-sm text-white">নির্বাচনী প্রচারণা গান</h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">পৌরসভা, ইউনিয়ন ও জাতীয় নির্বাচন</p>
-              </div>
+              {primaryType === 'ELECTION' && (
+                <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center shrink-0">
+                  <Check className="h-3.5 w-3.5" />
+                </div>
+              )}
             </div>
 
             {/* 2. School / Madrasa */}
             <div
               onClick={() => handleSelectPrimaryType('ADMISSION')}
-              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-3 ${primaryType === 'ADMISSION'
-                  ? 'bg-emerald-950/40 border-emerald-500 shadow-lg shadow-emerald-500/10 ring-2 ring-emerald-500/30'
-                  : 'bg-slate-950/70 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60'
-                }`}
+              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex items-center justify-between gap-3 active:scale-[0.98] ${
+                primaryType === 'ADMISSION'
+                  ? 'bg-emerald-950/60 border-emerald-500 shadow-lg shadow-emerald-500/15 ring-2 ring-emerald-500/40'
+                  : 'bg-slate-950/70 border-slate-800/90 hover:border-slate-700 hover:bg-slate-900/60'
+              }`}
             >
-              <div className="flex items-center justify-between">
-                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xl">
+              <div className="flex items-center gap-3.5">
+                <div className="h-12 w-12 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-2xl shrink-0">
                   🎓
                 </div>
-                {primaryType === 'ADMISSION' && (
-                  <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-                )}
+                <div>
+                  <h3 className="font-bold text-sm text-white">মাদ্রাসা / স্কুল ভর্তি মাইকিং</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">নতুন শিক্ষাবর্ষের ভর্তি প্রচারণা</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-sm text-white">মাদ্রাসা / স্কুল ভর্তি মাইকিং</h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">নতুন শিক্ষাবর্ষের ভর্তি প্রচার বিজ্ঞাপন</p>
-              </div>
+              {primaryType === 'ADMISSION' && (
+                <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                  <Check className="h-3.5 w-3.5" />
+                </div>
+              )}
             </div>
 
             {/* 3. Waz Mahfil */}
             <div
               onClick={() => handleSelectPrimaryType('WAZ')}
-              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-3 ${primaryType === 'WAZ'
-                  ? 'bg-amber-950/40 border-amber-500 shadow-lg shadow-amber-500/10 ring-2 ring-amber-500/30'
-                  : 'bg-slate-950/70 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60'
-                }`}
+              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex items-center justify-between gap-3 active:scale-[0.98] ${
+                primaryType === 'WAZ'
+                  ? 'bg-amber-950/60 border-amber-500 shadow-lg shadow-amber-500/15 ring-2 ring-amber-500/40'
+                  : 'bg-slate-950/70 border-slate-800/90 hover:border-slate-700 hover:bg-slate-900/60'
+              }`}
             >
-              <div className="flex items-center justify-between">
-                <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-xl">
+              <div className="flex items-center gap-3.5">
+                <div className="h-12 w-12 rounded-2xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-2xl shrink-0">
                   📢
                 </div>
-                {primaryType === 'WAZ' && (
-                  <CheckCircle2 className="h-5 w-5 text-amber-400" />
+                <div>
+                  <h3 className="font-bold text-sm text-white">ওয়াজ মাহফিল মাইকিং</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">তাফসিরুল কুরআন ও বার্ষিক মাহফিল</p>
+                </div>
+              </div>
+              {primaryType === 'WAZ' && (
+                <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0">
+                  <Check className="h-3.5 w-3.5" />
+                </div>
+              )}
+            </div>
+
+            {/* 4. Other / Custom */}
+            <div
+              onClick={() => handleSelectPrimaryType('CUSTOM')}
+              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex items-center justify-between gap-3 active:scale-[0.98] ${
+                primaryType === 'CUSTOM'
+                  ? 'bg-purple-950/60 border-purple-500 shadow-lg shadow-purple-500/15 ring-2 ring-purple-500/40'
+                  : 'bg-slate-950/70 border-slate-800/90 hover:border-slate-700 hover:bg-slate-900/60'
+              }`}
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="h-12 w-12 rounded-2xl bg-purple-500/15 text-purple-400 flex items-center justify-center text-2xl shrink-0">
+                  ✨
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-white">অন্যান্য কাস্টম কাজ</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">গজল, নাশিদ বা সাধারণ বিজ্ঞাপন</p>
+                </div>
+              </div>
+              {primaryType === 'CUSTOM' && (
+                <div className="w-6 h-6 rounded-full bg-purple-500 text-white flex items-center justify-center shrink-0">
+                  <Check className="h-3.5 w-3.5" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {primaryType && (
+            <div className="pt-3 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setError('')
+                  setStep(2)
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-bold rounded-2xl shadow-lg shadow-blue-600/30 transition transform active:scale-95 cursor-pointer"
+              >
+                <span>পরবর্তী ধাপ (কাজের মাধ্যম)</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* ধাপ ২: কাজের মাধ্যম সিলেক্ট (শুধু অডিও vs অডিও ও ভিডিও) */}
+      {/* ========================================================= */}
+      {step === 2 && (
+        <div className="p-5 sm:p-6 rounded-3xl bg-[#0f172a] border border-slate-800 shadow-xl space-y-4 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-600 text-white text-xs font-bold">
+                  ২
+                </span>
+                <span>কাজের মাধ্যম নির্বাচন করুন</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                নির্বাচিত ক্যাটাগরি: <strong className="text-blue-400">{categoryLabel}</strong>
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+            {/* Option A: Audio Only */}
+            <div
+              onClick={() => handleSelectFormat('AUDIO_ONLY')}
+              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-3 active:scale-[0.98] ${
+                workFormat === 'AUDIO_ONLY'
+                  ? 'bg-blue-950/60 border-blue-500 shadow-lg shadow-blue-500/15 ring-2 ring-blue-500/40'
+                  : 'bg-slate-950/70 border-slate-800/90 hover:border-slate-700 hover:bg-slate-900/60'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="h-11 w-11 rounded-2xl bg-blue-500/15 text-blue-400 flex items-center justify-center">
+                  <Music2 className="h-6 w-6" />
+                </div>
+                {workFormat === 'AUDIO_ONLY' && (
+                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center">
+                    <Check className="h-3.5 w-3.5" />
+                  </div>
                 )}
               </div>
               <div>
-                <h3 className="font-bold text-sm text-white">মাহফিল মাইকিং</h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">তাফসিরুল কুরআন ও ওয়াজ মাহফিল</p>
+                <h4 className="font-bold text-sm text-white">শুধু অডিও (Audio Only)</h4>
+                <p className="text-xs text-slate-400 mt-1">ভয়েস ওভার, সাউন্ড ডিজাইন ও অডিও প্রোডাকশন</p>
+              </div>
+            </div>
+
+            {/* Option B: Audio & Video */}
+            <div
+              onClick={() => handleSelectFormat('AUDIO_VIDEO')}
+              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-3 active:scale-[0.98] ${
+                workFormat === 'AUDIO_VIDEO'
+                  ? 'bg-cyan-950/60 border-cyan-500 shadow-lg shadow-cyan-500/15 ring-2 ring-cyan-500/40'
+                  : 'bg-slate-950/70 border-slate-800/90 hover:border-slate-700 hover:bg-slate-900/60'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="h-11 w-11 rounded-2xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center">
+                  <Video className="h-6 w-6" />
+                </div>
+                {workFormat === 'AUDIO_VIDEO' && (
+                  <div className="w-6 h-6 rounded-full bg-cyan-500 text-white flex items-center justify-center">
+                    <Check className="h-3.5 w-3.5" />
+                  </div>
+                )}
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-white">অডিও এবং ভিডিওসহ (Audio & Video)</h4>
+                <p className="text-xs text-slate-400 mt-1">সাউন্ড প্রোডাকশন + পূর্ণাঙ্গ ভিডিও এডিটিং</p>
               </div>
             </div>
           </div>
 
-          {/* Optional small custom order button */}
-          <div className="pt-1 flex items-center justify-end">
+          {/* Navigation Buttons */}
+          <div className="pt-3 flex items-center justify-between gap-3 border-t border-slate-800/80">
             <button
               type="button"
-              onClick={() => handleSelectPrimaryType('CUSTOM')}
-              className={`text-[11px] font-semibold transition px-3 py-1.5 rounded-xl border ${primaryType === 'CUSTOM'
-                  ? 'bg-purple-950/40 border-purple-500 text-purple-300'
-                  : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
-                }`}
+              onClick={() => {
+                setError('')
+                setStep(1)
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 transition"
             >
-              + অন্যান্য কাস্টম অর্ডার (গজল / বিজ্ঞাপন)
+              <ChevronLeft className="h-4 w-4" />
+              <span>পূর্ববর্তী ধাপ</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setError('')
+                setStep(3)
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-bold rounded-2xl shadow-lg shadow-blue-600/30 transition transform active:scale-95 cursor-pointer"
+            >
+              <span>পরবর্তী ধাপ (চুক্তি মূল্য)</span>
+              <ChevronRight className="h-4 w-4" />
             </button>
           </div>
         </div>
+      )}
 
-        {/* ========================================================= */}
-        {/* ধাপ ২: কাজের মাধ্যম (শুধু অডিও নাকি অডিও ও ভিডিও) */}
-        {/* ========================================================= */}
-        {primaryType && primaryType !== 'WAZ' && (
-          <div className="p-5 sm:p-6 rounded-3xl bg-[#0f172a] border border-slate-800 shadow-xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-blue-600/20 text-blue-400 font-bold flex items-center justify-center text-xs">
-                ২
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-white">কাজের মাধ্যম নির্বাচন করুন</h2>
-                <p className="text-[11px] text-slate-400">শুধু অডিও রেকর্ড হবে নাকি ভিডিওসহ তৈরি হবে?</p>
+      {/* ========================================================= */}
+      {/* ধাপ ৩: কাজের চুক্তি মূল্য / প্রাইস সিস্টেম */}
+      {/* ========================================================= */}
+      {step === 3 && (
+        <div className="p-5 sm:p-6 rounded-3xl bg-[#0f172a] border border-slate-800 shadow-xl space-y-5 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-600 text-white text-xs font-bold">
+                  ৩
+                </span>
+                <span>কাজের চুক্তি মূল্য ও অগ্রিম জমা</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">মোট টাকার পরিমাণ এবং অগ্রিম জমার হিসাব লিখুন</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {/* Total Price Input */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-200 flex items-center gap-1">
+                <span>মোট চুক্তি মূল্য (৳)</span>
+                <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-base">
+                  ৳
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={totalPrice}
+                  onChange={(e) => {
+                    setError('')
+                    setTotalPrice(e.target.value === '' ? '' : Number(e.target.value))
+                  }}
+                  placeholder="যেমন: ৫০০০"
+                  autoFocus
+                  required
+                  min={1}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-700/80 rounded-2xl text-base sm:text-lg font-black text-white focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500"
+                />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              {/* Option A: Audio Only */}
-              <div
-                onClick={() => setWorkFormat('AUDIO_ONLY')}
-                className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between ${workFormat === 'AUDIO_ONLY'
-                    ? 'bg-blue-950/40 border-blue-500 ring-2 ring-blue-500/30'
-                    : 'bg-slate-950/70 border-slate-800/80 hover:bg-slate-900/60'
-                  }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center">
-                    <Music2 className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-xs sm:text-sm text-white">শুধু অডিও (Audio Only)</h4>
-                    <p className="text-[11px] text-slate-400">ভয়েস ওভার, সাউন্ড ও মিউজিক ট্র্যাক</p>
-                  </div>
-                </div>
-                {workFormat === 'AUDIO_ONLY' && (
-                  <CheckCircle2 className="h-5 w-5 text-blue-400 shrink-0" />
-                )}
+            {/* Advance Paid Input */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300">
+                অগ্রিম পরিশোধ / জমা (৳) <span className="text-slate-500 text-[11px]">(যদি থাকে)</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-base">
+                  ৳
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={advancePaid}
+                  onChange={(e) => setAdvancePaid(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="যেমন: ২০০০ (না থাকলে খালি রাখুন)"
+                  min={0}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-700/80 rounded-2xl text-base sm:text-lg font-bold text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500"
+                />
               </div>
+            </div>
 
-              {/* Option B: Audio & Video */}
-              <div
-                onClick={() => setWorkFormat('AUDIO_VIDEO')}
-                className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between ${workFormat === 'AUDIO_VIDEO'
-                    ? 'bg-blue-950/40 border-blue-500 ring-2 ring-blue-500/30'
-                    : 'bg-slate-950/70 border-slate-800/80 hover:bg-slate-900/60'
-                  }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
-                    <Video className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-xs sm:text-sm text-white">অডিও এবং ভিডিওসহ (Audio & Video)</h4>
-                    <p className="text-[11px] text-slate-400">অডিও প্রোডাকশন + ফুল ভিডিও এডিটিং</p>
-                  </div>
+            {/* Live Due Calculation Card */}
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+              <div>
+                <span className="text-xs text-slate-400 block">বর্তমান অবশিষ্ট বকেয়া</span>
+                <span className="text-[11px] text-slate-500">চুক্তি মূল্য থেকে অগ্রিম বাদ দিয়ে</span>
+              </div>
+              <div className="text-right">
+                <div className="text-lg sm:text-xl font-black text-amber-400">
+                  {formatCurrency(dueBalance)}
                 </div>
-                {workFormat === 'AUDIO_VIDEO' && (
-                  <CheckCircle2 className="h-5 w-5 text-purple-400 shrink-0" />
+                {dueBalance === 0 && numTotal > 0 && (
+                  <span className="text-[10px] text-emerald-400 font-semibold">সম্পূর্ণ পরিশোধিত</span>
                 )}
               </div>
             </div>
           </div>
-        )}
 
-        {/* ========================================================= */}
-        {/* ধাপ ৩: প্রাইজ ও পেমেন্ট (Price & Payment) */}
-        {/* ========================================================= */}
-        {primaryType && (
-          <div className="p-5 sm:p-6 rounded-3xl bg-[#0f172a] border border-slate-800 shadow-xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-emerald-600/20 text-emerald-400 font-bold flex items-center justify-center text-xs">
-                {primaryType === 'WAZ' ? '২' : '৩'}
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-white">কাজের চুক্তি মূল্য (প্রাইজ)</h2>
-                <p className="text-[11px] text-slate-400">মোট টাকা ও অগ্রিম জমার পরিমাণ লিখুন</p>
-              </div>
-            </div>
+          {/* Navigation Buttons */}
+          <div className="pt-3 flex items-center justify-between gap-3 border-t border-slate-800/80">
+            <button
+              type="button"
+              onClick={() => {
+                setError('')
+                setStep(2)
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 transition"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span>পূর্ববর্তী ধাপ</span>
+            </button>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">
-                  মোট চুক্তি মূল্য (৳) <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                  <input
-                    type="number"
-                    value={totalPrice}
-                    onChange={(e) => setTotalPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="যেমন: 5000"
-                    required
-                    min={1}
-                    className="w-full pl-9 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-bold text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">
-                  অগ্রিম পরিশোধ (৳)
-                </label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />
-                  <input
-                    type="number"
-                    value={advancePaid}
-                    onChange={(e) => setAdvancePaid(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="যেমন: 2000"
-                    min={0}
-                    className="w-full pl-9 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-bold text-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-400">বর্তমান বকেয়া</label>
-                <div className="px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-bold text-amber-400 flex items-center justify-between">
-                  <span>বকেয়া:</span>
-                  <span>{formatCurrency(dueBalance)}</span>
-                </div>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={handleProceedToDetails}
+              className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-bold rounded-2xl shadow-lg shadow-blue-600/30 transition transform active:scale-95 cursor-pointer"
+            >
+              <span>পরবর্তী ধাপ (প্রয়োজনীয় তথ্য)</span>
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* ========================================================= */}
-        {/* ধাপ ৪: প্রয়োজনীয় তথ্যসমূহ (Details per chosen category) */}
-        {/* ========================================================= */}
-        {primaryType && (
-          <div className="p-5 sm:p-6 rounded-3xl bg-[#0f172a] border border-slate-800 shadow-xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-blue-600/20 text-blue-400 font-bold flex items-center justify-center text-xs">
-                {primaryType === 'WAZ' ? '৩' : '৪'}
-              </div>
+      {/* ========================================================= */}
+      {/* ধাপ ৪: প্রয়োজনীয় তথ্যাদি ও অর্ডার কনফার্ম */}
+      {/* ========================================================= */}
+      {step === 4 && (
+        <form onSubmit={handleSubmit} className="space-y-5 animate-in fade-in duration-200">
+          <div className="p-5 sm:p-6 rounded-3xl bg-[#0f172a] border border-slate-800 shadow-xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <h2 className="text-sm font-bold text-white">প্রয়োজনীয় তথ্যাদি</h2>
-                <p className="text-[11px] text-slate-400">WhatsApp নম্বর ও অর্ডার সংশ্লিষ্ট বিবরণ</p>
+                <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-600 text-white text-xs font-bold">
+                    ৪
+                  </span>
+                  <span>প্রয়োজনীয় তথ্যাদি লিখুন</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  ক্লায়েন্টের ফোন নম্বর ও কাজের বিবরণ দিন
+                </p>
               </div>
             </div>
 
-            {/* A. TYPE 1: ELECTION DETAILS */}
+            {/* 1. Client WhatsApp Phone - Always prominent at top */}
+            <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 space-y-1.5">
+              <label className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                <MessageCircle className="h-4 w-4 text-emerald-400" />
+                <span>ক্লায়েন্টের WhatsApp / মোবাইল নম্বর</span>
+                <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="tel"
+                inputMode="tel"
+                value={whatsappPhone}
+                onChange={(e) => setWhatsappPhone(e.target.value)}
+                placeholder="017xxxxxxxx"
+                required
+                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/60 font-mono"
+              />
+              <p className="text-[10px] text-slate-400">এই নম্বরে কাজের আপডেট ও ফাইল পাঠানো হবে</p>
+            </div>
+
+            {/* 2. Category-Specific Fields */}
+            {/* TYPE 1: ELECTION */}
             {primaryType === 'ELECTION' && (
-              <div className="space-y-3.5 pt-1">
+              <div className="space-y-3.5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-300">
-                      গানের নাম / শিরোনাম <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={songTitle}
-                      onChange={(e) => setSongTitle(e.target.value)}
-                      placeholder="যেমন: জামালপুর মেয়র নির্বাচন প্রচারণা গান"
-                      required
-                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-slate-300">
                       প্রার্থীর নাম <span className="text-rose-500">*</span>
@@ -544,23 +793,23 @@ export const CreateOrderPage: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-300">প্রার্থীর পদবী</label>
+                    <label className="text-xs font-semibold text-slate-300">পদের নাম</label>
                     <input
                       type="text"
                       value={candidatePosition}
                       onChange={(e) => setCandidatePosition(e.target.value)}
-                      placeholder="যেমন: মেয়র / চেয়ারম্যান / মেম্বার / কাউন্সিলর"
+                      placeholder="যেমন: মেয়র / চেয়ারম্যান / মেম্বার"
                       className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-300">নির্বাচনী প্রতীক</label>
+                    <label className="text-xs font-semibold text-slate-300">নির্বাচনী প্রতীক / মার্কা</label>
                     <input
                       type="text"
                       value={electionSymbol}
                       onChange={(e) => setElectionSymbol(e.target.value)}
-                      placeholder="যেমন: নৌকা, ধানের শীষ, হাতপাখা, ট্রাক"
+                      placeholder="যেমন: নৌকা / ধানের শীষ / হাতপাখা"
                       className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
@@ -576,26 +825,20 @@ export const CreateOrderPage: React.FC = () => {
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-300">
-                      অর্ডারকৃত WhatsApp মোবাইল নম্বর <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-400" />
-                      <input
-                        type="tel"
-                        value={whatsappPhone}
-                        onChange={(e) => setWhatsappPhone(e.target.value)}
-                        placeholder="017xxxxxxxx (WhatsApp)"
-                        required
-                        className="w-full pl-9 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                    </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-xs font-semibold text-slate-300">গানের শিরোনাম (যদি নির্দিষ্ট থাকে)</label>
+                    <input
+                      type="text"
+                      value={songTitle}
+                      onChange={(e) => setSongTitle(e.target.value)}
+                      placeholder="খালি রাখলে প্রার্থীর নামে স্বয়ংক্রিয় তৈরি হবে"
+                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">প্রচারণার স্লোগান / বিশেষ নির্দেশনা</label>
+                  <label className="text-xs font-semibold text-slate-300">স্লোগান বা বিশেষ নির্দেশনা (ঐচ্ছিক)</label>
                   <textarea
                     value={campaignSlogan}
                     onChange={(e) => setCampaignSlogan(e.target.value)}
@@ -607,9 +850,9 @@ export const CreateOrderPage: React.FC = () => {
               </div>
             )}
 
-            {/* B. TYPE 2: ADMISSION DETAILS */}
+            {/* TYPE 2: ADMISSION */}
             {primaryType === 'ADMISSION' && (
-              <div className="space-y-3.5 pt-1">
+              <div className="space-y-3.5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1 sm:col-span-2">
                     <label className="text-xs font-semibold text-slate-300">
@@ -626,23 +869,6 @@ export const CreateOrderPage: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-300">
-                      অর্ডারকৃত WhatsApp মোবাইল নম্বর <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-400" />
-                      <input
-                        type="tel"
-                        value={whatsappPhone}
-                        onChange={(e) => setWhatsappPhone(e.target.value)}
-                        placeholder="017xxxxxxxx (WhatsApp)"
-                        required
-                        className="w-full pl-9 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
                     <label className="text-xs font-semibold text-slate-300">ভর্তি শিক্ষাবর্ষ ও বিভাগ</label>
                     <input
                       type="text"
@@ -652,26 +878,35 @@ export const CreateOrderPage: React.FC = () => {
                       className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-300">ভর্তির শ্রেণি</label>
+                    <input
+                      type="text"
+                      value={availableClasses}
+                      onChange={(e) => setAvailableClasses(e.target.value)}
+                      placeholder="যেমন: প্লে থেকে ১০ম শ্রেণি"
+                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">
-                    প্রতিষ্ঠানের ঠিকানা ও মাইকিংয়ের প্রয়োজনীয় তথ্যসমূহ
-                  </label>
+                  <label className="text-xs font-semibold text-slate-300">প্রতিষ্ঠানের ঠিকানা ও বিশেষ আকর্ষণ</label>
                   <textarea
                     value={institutionDetails}
                     onChange={(e) => setInstitutionDetails(e.target.value)}
-                    rows={3}
-                    placeholder="যেমন: জামালপুর সদর রোড। বৈশিষ্ট্য: অভিজ্ঞ শিক্ষক, আবাসিক হোস্টেল, বিশুদ্ধ পরিবেশ..."
+                    rows={2}
+                    placeholder="যেমন: অভিজ্ঞ শিক্ষক, আবাসিক হোস্টেল, মনোরম পরিবেশ..."
                     className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
                   />
                 </div>
               </div>
             )}
 
-            {/* C. TYPE 3: WAZ MAHFIL DETAILS */}
+            {/* TYPE 3: WAZ */}
             {primaryType === 'WAZ' && (
-              <div className="space-y-3.5 pt-1">
+              <div className="space-y-3.5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1 sm:col-span-2">
                     <label className="text-xs font-semibold text-slate-300">
@@ -687,24 +922,7 @@ export const CreateOrderPage: React.FC = () => {
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-300">
-                      অর্ডারকৃত WhatsApp মোবাইল নম্বর <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-400" />
-                      <input
-                        type="tel"
-                        value={whatsappPhone}
-                        onChange={(e) => setWhatsappPhone(e.target.value)}
-                        placeholder="017xxxxxxxx (WhatsApp)"
-                        required
-                        className="w-full pl-9 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
+                  <div className="space-y-1 sm:col-span-2">
                     <label className="text-xs font-semibold text-slate-300">মাহফিলের স্থান ও সময়</label>
                     <input
                       type="text"
@@ -729,9 +947,9 @@ export const CreateOrderPage: React.FC = () => {
               </div>
             )}
 
-            {/* D. TYPE 4: CUSTOM ORDER DETAILS */}
+            {/* TYPE 4: CUSTOM */}
             {primaryType === 'CUSTOM' && (
-              <div className="space-y-3.5 pt-1">
+              <div className="space-y-3.5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-slate-300">
@@ -741,7 +959,7 @@ export const CreateOrderPage: React.FC = () => {
                       type="text"
                       value={customTitle}
                       onChange={(e) => setCustomTitle(e.target.value)}
-                      placeholder="যেমন: ইসলামিক নাশিদ বা ব্যবসা প্রতিষ্ঠানের ভয়েস"
+                      placeholder="যেমন: নতুন ব্যবসা প্রতিষ্ঠানের বিজ্ঞাপন"
                       required
                       className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
@@ -757,31 +975,14 @@ export const CreateOrderPage: React.FC = () => {
                       className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
-
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className="text-xs font-semibold text-slate-300">
-                      অর্ডারকৃত WhatsApp মোবাইল নম্বর <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-400" />
-                      <input
-                        type="tel"
-                        value={whatsappPhone}
-                        onChange={(e) => setWhatsappPhone(e.target.value)}
-                        placeholder="017xxxxxxxx (WhatsApp)"
-                        required
-                        className="w-full pl-9 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                    </div>
-                  </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">বিস্তারিত বিবরণ</label>
+                  <label className="text-xs font-semibold text-slate-300">কাজের বিস্তারিত বিবরণ</label>
                   <textarea
                     value={customDetails}
                     onChange={(e) => setCustomDetails(e.target.value)}
-                    rows={3}
+                    rows={2}
                     placeholder="কাজের বিস্তারিত বিবরণ ও বিশেষ নির্দেশনা..."
                     className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
                   />
@@ -789,32 +990,71 @@ export const CreateOrderPage: React.FC = () => {
               </div>
             )}
 
-
-          </div>
-        )}
-
-        {/* ========================================================= */}
-        {/* সাবমিট বাটন (Submit Order) */}
-        {/* ========================================================= */}
-        {primaryType && (
-          <div className="p-4 rounded-3xl bg-[#0b1120] border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
-            <div className="text-xs text-slate-400">
-              মোট চুক্তি: <strong className="text-white">{formatCurrency(numTotal)}</strong> |
-              অগ্রিম: <strong className="text-emerald-400">{formatCurrency(numAdvance)}</strong> |
-              বকেয়া: <strong className="text-amber-400">{formatCurrency(dueBalance)}</strong>
+            {/* Optional Deadline Input */}
+            <div className="pt-2 border-t border-slate-800/80">
+              <label className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 mb-1.5">
+                <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                <span>ডেলিভারির সম্ভাব্য তারিখ (ঐচ্ছিক)</span>
+              </label>
+              <input
+                type="date"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                className="w-full sm:w-64 px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
             </div>
+
+            {/* Order Summary Recap Card */}
+            <div className="p-3.5 rounded-2xl bg-slate-950/90 border border-slate-800/80 text-xs space-y-2">
+              <div className="font-semibold text-slate-300 text-[11px] uppercase tracking-wider">
+                অর্ডার সংক্ষেপ
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-slate-400 text-[11px]">
+                <div>
+                  ক্যাটাগরি: <strong className="text-white block">{categoryLabel}</strong>
+                </div>
+                <div>
+                  মাধ্যম: <strong className="text-white block">{workFormat === 'AUDIO_VIDEO' ? 'অডিও ও ভিডিও' : 'শুধু অডিও'}</strong>
+                </div>
+                <div>
+                  মোট চুক্তি: <strong className="text-white block">{formatCurrency(numTotal)}</strong>
+                </div>
+                <div>
+                  অগ্রিম: <strong className="text-emerald-400 block">{formatCurrency(numAdvance)}</strong>
+                </div>
+                <div>
+                  বকেয়া: <strong className="text-amber-400 block">{formatCurrency(dueBalance)}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation & Submit Buttons */}
+          <div className="p-4 rounded-3xl bg-[#0b1120] border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
+            <button
+              type="button"
+              onClick={() => {
+                setError('')
+                setStep(3)
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 transition"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span>পূর্ববর্তী ধাপ (চুক্তি মূল্য)</span>
+            </button>
 
             <button
               type="submit"
               disabled={submitting}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-xs sm:text-sm font-bold shadow-lg shadow-blue-600/30 transition transform active:scale-95 cursor-pointer disabled:opacity-50"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-2xl text-xs sm:text-sm font-black shadow-lg shadow-emerald-600/30 transition transform active:scale-95 cursor-pointer disabled:opacity-50"
             >
-              <span>{submitting ? 'অর্ডার এন্ট্রি হচ্ছে...' : 'অর্ডার কনফার্ম ও এন্ট্রি করুন'}</span>
-              <ChevronRight className="h-4 w-4" />
+              <CheckCircle2 className="h-4 w-4" />
+              <span>{submitting ? 'অর্ডার এন্ট্রি হচ্ছে...' : '✅ অর্ডার কনফার্ম ও এন্ট্রি করুন'}</span>
             </button>
           </div>
-        )}
-      </form>
+        </form>
+      )}
     </div>
   )
 }

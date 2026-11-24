@@ -23,8 +23,8 @@ import { useAuth } from '../../contexts/AuthContext'
 import { formatBengaliDate, formatBengaliNumber } from '../../lib/utils'
 
 export const AudioDeptPage: React.FC = () => {
-  const { user, hasRole } = useAuth()
-  const canAction = hasRole(['SUPER_ADMIN', 'AUDIO_DESIGNER'])
+  const { user, currentRole } = useAuth()
+  const canAction = currentRole === 'AUDIO_DESIGNER' || (currentRole === 'SUPER_ADMIN' && user?.role === 'SUPER_ADMIN')
   const [searchParams] = useSearchParams()
   const targetOrderId = searchParams.get('orderId')
 
