@@ -23,7 +23,8 @@ import { useAuth } from '../../contexts/AuthContext'
 import { formatBengaliDate, formatBengaliNumber } from '../../lib/utils'
 
 export const AudioDeptPage: React.FC = () => {
-  const { user } = useAuth()
+  const { user, hasRole } = useAuth()
+  const canAction = hasRole(['SUPER_ADMIN', 'AUDIO_DESIGNER'])
   const [searchParams] = useSearchParams()
   const targetOrderId = searchParams.get('orderId')
 
@@ -328,39 +329,43 @@ export const AudioDeptPage: React.FC = () => {
 
                 {/* Actions */}
                 <div className="pt-2 border-t border-slate-800/80 flex items-center gap-2 flex-wrap">
-                  {/* Claim Button if not assigned */}
-                  {!ord.assigned_audio_staff_id && (
-                    <button
-                      onClick={() => handleClaimOrder(ord.id)}
-                      disabled={actionLoadingId === ord.id}
-                      className="flex-1 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <UserCheck className="h-3.5 w-3.5" />
-                      <span>{actionLoadingId === ord.id ? 'গ্রহণ হচ্ছে...' : 'কাজের দায়িত্ব নিন'}</span>
-                    </button>
-                  )}
+                  {canAction && (
+                    <>
+                      {/* Claim Button if not assigned */}
+                      {!ord.assigned_audio_staff_id && (
+                        <button
+                          onClick={() => handleClaimOrder(ord.id)}
+                          disabled={actionLoadingId === ord.id}
+                          className="flex-1 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <UserCheck className="h-3.5 w-3.5" />
+                          <span>{actionLoadingId === ord.id ? 'গ্রহণ হচ্ছে...' : 'কাজের দায়িত্ব নিন'}</span>
+                        </button>
+                      )}
 
-                  {/* Start Work button if pending and assigned */}
-                  {isPending && ord.assigned_audio_staff_id && (
-                    <button
-                      onClick={() => handleStartWork(ord.id)}
-                      disabled={actionLoadingId === ord.id}
-                      className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Play className="h-3.5 w-3.5 fill-current" />
-                      <span>কাজ শুরু করুন</span>
-                    </button>
-                  )}
+                      {/* Start Work button if pending and assigned */}
+                      {isPending && ord.assigned_audio_staff_id && (
+                        <button
+                          onClick={() => handleStartWork(ord.id)}
+                          disabled={actionLoadingId === ord.id}
+                          className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Play className="h-3.5 w-3.5 fill-current" />
+                          <span>কাজ শুরু করুন</span>
+                        </button>
+                      )}
 
-                  {/* Complete Button if in progress or revision */}
-                  {(ord.overall_status === 'AUDIO_IN_PROGRESS' || ord.overall_status === 'AUDIO_REVISION') && (
-                    <button
-                      onClick={() => setConfirmOrder(ord)}
-                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-lg shadow-emerald-600/30 cursor-pointer"
-                    >
-                      <CheckCircle className="h-3.5 w-3.5" />
-                      <span>অডিও সম্পন্ন</span>
-                    </button>
+                      {/* Complete Button if in progress or revision */}
+                      {(ord.overall_status === 'AUDIO_IN_PROGRESS' || ord.overall_status === 'AUDIO_REVISION') && (
+                        <button
+                          onClick={() => setConfirmOrder(ord)}
+                          className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-lg shadow-emerald-600/30 cursor-pointer"
+                        >
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          <span>অডিও সম্পন্ন</span>
+                        </button>
+                      )}
+                    </>
                   )}
 
                   {/* Already Completed Badge */}

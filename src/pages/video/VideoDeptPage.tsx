@@ -21,7 +21,8 @@ import { useAuth } from '../../contexts/AuthContext'
 import { formatBengaliDate, formatBengaliNumber } from '../../lib/utils'
 
 export const VideoDeptPage: React.FC = () => {
-  const { user } = useAuth()
+  const { user, hasRole } = useAuth()
+  const canAction = hasRole(['SUPER_ADMIN', 'VIDEO_EDITOR'])
   const [searchParams] = useSearchParams()
   const targetOrderId = searchParams.get('orderId')
 
@@ -343,28 +344,43 @@ export const VideoDeptPage: React.FC = () => {
 
                 {/* Actions */}
                 <div className="pt-2 border-t border-slate-800/80 flex items-center gap-2 flex-wrap">
-                  {/* Claim Button if not assigned or not assigned to me */}
-                  {!ord.assigned_video_staff_id && !isWaitingForAudio && (
-                    <button
-                      onClick={() => handleClaimOrder(ord.id)}
-                      disabled={actionLoadingId === ord.id}
-                      className="flex-1 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-semibold shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <UserCheck className="h-3.5 w-3.5" />
-                      <span>{actionLoadingId === ord.id ? 'গ্রহণ হচ্ছে...' : 'কাজের দায়িত্ব নিন'}</span>
-                    </button>
-                  )}
+                  {canAction && (
+                    <>
+                      {/* Claim Button if not assigned or not assigned to me */}
+                      {!ord.assigned_video_staff_id && !isWaitingForAudio && (
+                        <button
+                          onClick={() => handleClaimOrder(ord.id)}
+                          disabled={actionLoadingId === ord.id}
+                          className="flex-1 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-semibold shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <UserCheck className="h-3.5 w-3.5" />
+                          <span>{actionLoadingId === ord.id ? 'গ্রহণ হচ্ছে...' : 'কাজের দায়িত্ব নিন'}</span>
+                        </button>
+                      )}
 
-                  {/* Start Work button if pending and assigned */}
-                  {ord.overall_status === 'VIDEO_PENDING' && !isWaitingForAudio && ord.assigned_video_staff_id && (
-                    <button
-                      onClick={() => handleStartWork(ord.id)}
-                      disabled={actionLoadingId === ord.id}
-                      className="flex-1 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Play className="h-3.5 w-3.5 fill-current" />
-                      <span>ভিডিও কাজ শুরু করুন</span>
-                    </button>
+                      {/* Start Work button if pending and assigned */}
+                      {ord.overall_status === 'VIDEO_PENDING' && !isWaitingForAudio && ord.assigned_video_staff_id && (
+                        <button
+                          onClick={() => handleStartWork(ord.id)}
+                          disabled={actionLoadingId === ord.id}
+                          className="flex-1 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Play className="h-3.5 w-3.5 fill-current" />
+                          <span>ভিডিও কাজ শুরু করুন</span>
+                        </button>
+                      )}
+
+                      {/* Complete Button if in progress or revision */}
+                      {(ord.overall_status === 'VIDEO_IN_PROGRESS' || ord.overall_status === 'VIDEO_REVISION') && (
+                        <button
+                          onClick={() => setConfirmOrder(ord)}
+                          className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-lg shadow-emerald-600/30 cursor-pointer"
+                        >
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          <span>ভিডিও সম্পন্ন</span>
+                        </button>
+                      )}
+                    </>
                   )}
 
                   {/* Waiting for audio indicator */}
@@ -373,17 +389,6 @@ export const VideoDeptPage: React.FC = () => {
                       <Clock className="h-3.5 w-3.5 text-amber-400" />
                       <span>অডিওর অপেক্ষায়</span>
                     </span>
-                  )}
-
-                  {/* Complete Button if in progress or revision */}
-                  {(ord.overall_status === 'VIDEO_IN_PROGRESS' || ord.overall_status === 'VIDEO_REVISION') && (
-                    <button
-                      onClick={() => setConfirmOrder(ord)}
-                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-lg shadow-emerald-600/30 cursor-pointer"
-                    >
-                      <CheckCircle className="h-3.5 w-3.5" />
-                      <span>ভিডিও সম্পন্ন</span>
-                    </button>
                   )}
 
                   {/* Already Completed Badge */}

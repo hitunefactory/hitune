@@ -61,19 +61,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
       title: 'অডিও বিভাগ',
       path: '/audio',
       icon: Headphones,
-      allowed: hasRole(['SUPER_ADMIN', 'ORDER_MANAGER', 'AUDIO_DESIGNER', 'QUALITY_CONTROLLER']),
+      allowed: hasRole(['SUPER_ADMIN', 'AUDIO_DESIGNER']),
     },
     {
       title: 'ভিডিও বিভাগ',
       path: '/video',
       icon: Video,
-      allowed: hasRole(['SUPER_ADMIN', 'ORDER_MANAGER', 'VIDEO_EDITOR', 'QUALITY_CONTROLLER']),
+      allowed: hasRole(['SUPER_ADMIN', 'VIDEO_EDITOR']),
     },
     {
       title: 'কোয়ালিটি কন্ট্রোল',
       path: '/quality-control',
       icon: CheckCircle2,
-      allowed: hasRole(['SUPER_ADMIN', 'ORDER_MANAGER', 'QUALITY_CONTROLLER']),
+      allowed: hasRole(['SUPER_ADMIN', 'QUALITY_CONTROLLER']),
     },
     {
       title: 'ডেলিভারি ব্যবস্থাপনা',

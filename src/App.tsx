@@ -42,8 +42,12 @@ export function App() {
                     <Route path="orders" element={<OrdersListPage />} />
                     <Route path="orders/new" element={<CreateOrderPage />} />
                     <Route path="orders/:id" element={<OrderDetailPage />} />
-                    <Route path="audio" element={<AudioDeptPage />} />
-                    <Route path="video" element={<VideoDeptPage />} />
+                    <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'AUDIO_DESIGNER']} />}>
+                      <Route path="audio" element={<AudioDeptPage />} />
+                    </Route>
+                    <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'VIDEO_EDITOR']} />}>
+                      <Route path="video" element={<VideoDeptPage />} />
+                    </Route>
                     <Route path="quality-control" element={<QualityControlPage />} />
                     <Route path="delivery" element={<DeliveryPage />} />
                     <Route path="accounting" element={<AccountingPage />} />
