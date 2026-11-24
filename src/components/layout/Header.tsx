@@ -79,6 +79,23 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
     loadNotifications()
     if (link) {
       setShowNotifMenu(false)
+      // Smart navigation: if target route is department-restricted and user lacks access, redirect to /orders/:id
+      if (link.startsWith('/video') && !hasRole(['SUPER_ADMIN', 'VIDEO_EDITOR'])) {
+        const urlParams = new URLSearchParams(link.split('?')[1] || '')
+        const orderId = urlParams.get('orderId')
+        if (orderId) {
+          navigate(`/orders/${orderId}`)
+          return
+        }
+      }
+      if (link.startsWith('/audio') && !hasRole(['SUPER_ADMIN', 'AUDIO_DESIGNER'])) {
+        const urlParams = new URLSearchParams(link.split('?')[1] || '')
+        const orderId = urlParams.get('orderId')
+        if (orderId) {
+          navigate(`/orders/${orderId}`)
+          return
+        }
+      }
       navigate(link)
     }
   }
