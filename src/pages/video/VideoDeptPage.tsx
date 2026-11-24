@@ -88,13 +88,7 @@ export const VideoDeptPage: React.FC = () => {
     setCompleting(true)
     try {
       await dataService.updateOrderStatus(order.id, 'READY_FOR_DELIVERY', 'ভিডিও কাজ সম্পন্ন করা হয়েছে।')
-      dataService.createNotification({
-        user_id: user?.id || 'all',
-        title: `অর্ডার ${order.order_number} এর ভিডিও সম্পন্ন`,
-        message: 'ভিডিও কাজ সফলভাবে সম্পন্ন হয়েছে। অর্ডারটি ডেলিভারির জন্য প্রস্তুত।',
-        link: '/delivery',
-        type: 'SUCCESS',
-      })
+      dataService.notifyVideoCompleted(order)
       setConfirmOrder(null)
       await loadVideoOrders()
     } catch (err) {

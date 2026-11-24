@@ -62,7 +62,7 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
 
   const loadNotifications = async () => {
     if (!user) return
-    const list = await dataService.getNotifications(user.id)
+    const list = await dataService.getNotifications(user.id, currentRole)
     setNotifications(list)
   }
 
@@ -70,7 +70,7 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
     loadNotifications()
     const timer = setInterval(loadNotifications, 5000)
     return () => clearInterval(timer)
-  }, [user])
+  }, [user, currentRole])
 
   const unreadCount = notifications.filter((n) => !n.is_read).length
 

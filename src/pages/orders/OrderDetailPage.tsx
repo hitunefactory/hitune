@@ -172,15 +172,7 @@ export const OrderDetailPage: React.FC = () => {
     try {
       const nextStatus = order.video_required ? 'VIDEO_PENDING' : 'READY_FOR_DELIVERY'
       await dataService.updateOrderStatus(order.id, nextStatus, 'অডিও কাজ সম্পন্ন করা হয়েছে।')
-      dataService.createNotification({
-        user_id: user?.id || 'all',
-        title: `অর্ডার ${order.order_number} এর অডিও সম্পন্ন`,
-        message: order.video_required
-          ? 'অডিও সম্পন্ন হয়েছে, ভিডিওর কাজ শুরু করুন।'
-          : 'অডিও সম্পন্ন হয়েছে, অর্ডারটি ডেলিভারির জন্য প্রস্তুত।',
-        link: order.video_required ? '/video' : '/delivery',
-        type: 'SUCCESS',
-      })
+      dataService.notifyAudioCompleted(order)
       await loadOrder()
     } catch (err) {
       console.error('Complete audio failed:', err)
@@ -201,13 +193,7 @@ export const OrderDetailPage: React.FC = () => {
     if (!order) return
     try {
       await dataService.updateOrderStatus(order.id, 'READY_FOR_DELIVERY', 'ভিডিও কাজ সম্পন্ন করা হয়েছে।')
-      dataService.createNotification({
-        user_id: user?.id || 'all',
-        title: `অর্ডার ${order.order_number} এর ভিডিও সম্পন্ন`,
-        message: 'ভিডিও কাজ সম্পন্ন হয়েছে, অর্ডারটি ডেলিভারির জন্য প্রস্তুত।',
-        link: '/delivery',
-        type: 'SUCCESS',
-      })
+      dataService.notifyVideoCompleted(order)
       await loadOrder()
     } catch (err) {
       console.error('Complete video failed:', err)

@@ -13,6 +13,7 @@ import {
   TaskSubmission,
   OrderOverallStatus,
   PaymentMethod,
+  UserRole,
 } from '../types/database'
 import {
   INITIAL_STAFF,
@@ -556,29 +557,50 @@ class DataService {
       })
     }
 
-    // 4. Send Notifications
-    if (newOrder.assigned_audio_staff_id) {
-      this.createNotification({
-        user_id: newOrder.assigned_audio_staff_id,
-        title: 'নতুন অডিও কাজ বরাদ্দ করা হয়েছে',
-        message: `${newOrder.order_number}: ${newOrder.title} এর অডিও প্রোডাকশন আপনাকে দেয়া হয়েছে।`,
-        link: `/audio?orderId=${newOrder.id}`,
-        type: 'INFO',
-      })
-    }
-
-    // Also notify all audio designers if unassigned
-    if (!newOrder.assigned_audio_staff_id && audioRequired) {
-      const audioDesigners = this.staff.filter((s) => s.role === 'AUDIO_DESIGNER' || s.roles?.includes('AUDIO_DESIGNER'))
-      audioDesigners.forEach((designer) => {
+    // 4. Send Role-Targeted Notifications
+    if (audioRequired) {
+      if (newOrder.assigned_audio_staff_id) {
         this.createNotification({
-          user_id: designer.id,
-          title: 'নতুন অডিও কাজ এসেছে',
-          message: `${newOrder.order_number}: ${newOrder.title} কাজের দায়িত্ব নিন।`,
+          user_id: newOrder.assigned_audio_staff_id,
+          title: 'নতুন অডিও কাজ বরাদ্দ করা হয়েছে',
+          message: `${newOrder.order_number}: ${newOrder.title} এর অডিও প্রোডাকশন আপনাকে দেয়া হয়েছে।`,
           link: `/audio?orderId=${newOrder.id}`,
           type: 'INFO',
         })
-      })
+      } else {
+        const audioDesigners = this.staff.filter((s) => s.role === 'AUDIO_DESIGNER' || s.roles?.includes('AUDIO_DESIGNER'))
+        audioDesigners.forEach((designer) => {
+          this.createNotification({
+            user_id: designer.id,
+            title: 'নতুন অডিও কাজ এসেছে',
+            message: `${newOrder.order_number}: ${newOrder.title} কাজের দায়িত্ব নিন।`,
+            link: `/audio?orderId=${newOrder.id}`,
+            type: 'INFO',
+          })
+        })
+      }
+    } else if (videoRequired) {
+      // Pure video work (no audio needed)
+      if (newOrder.assigned_video_staff_id) {
+        this.createNotification({
+          user_id: newOrder.assigned_video_staff_id,
+          title: 'নতুন ভিডিও কাজ বরাদ্দ করা হয়েছে',
+          message: `${newOrder.order_number}: ${newOrder.title} এর ভিডিও এডিটিং আপনাকে দেয়া হয়েছে।`,
+          link: `/video?orderId=${newOrder.id}`,
+          type: 'INFO',
+        })
+      } else {
+        const videoEditors = this.staff.filter((s) => s.role === 'VIDEO_EDITOR' || s.roles?.includes('VIDEO_EDITOR'))
+        videoEditors.forEach((editor) => {
+          this.createNotification({
+            user_id: editor.id,
+            title: 'নতুন ভিডিও কাজ এসেছে',
+            message: `${newOrder.order_number}: ${newOrder.title} ভিডিও কাজের দায়িত্ব নিন।`,
+            link: `/video?orderId=${newOrder.id}`,
+            type: 'INFO',
+          })
+        })
+      }
     }
 
     return newOrder
@@ -990,13 +1012,47 @@ class DataService {
     return newRev
   }
 
+  notifyAudioCompleted(order: Order) {
+    if (order.video_required) {
+      if (order.assigned_video_staff_id) {
+        this.createNotification({
+          user_id: order.assigned_video_staff_id,
+          title: 'অডিও সম্পন্ন — ভিডিও এডিটিং শুরু করুন',
+          message: `${order.order_number}: ${order.title} এর অডিও কাজ শেষ হয়েছে। এখন ভিডিও এডিটিং শুরু করুন।`,
+          link: `/video?orderId=${order.id}`,
+          type: 'INFO',
+        })
+      } else {
+        const videoStaff = this.staff.filter((s) => s.role === 'VIDEO_EDITOR' || s.roles?.includes('VIDEO_EDITOR'))
+        videoStaff.forEach((v) => {
+          this.createNotification({
+            user_id: v.id,
+            title: 'অডিও সম্পন্ন — ভিডিও কাজ প্রস্তুত',
+            message: `${order.order_number}: ${order.title} এর অডিও কাজ সম্পন্ন। ভিডিও কাজের দায়িত্ব নিন।`,
+            link: `/video?orderId=${order.id}`,
+            type: 'INFO',
+          })
+        })
+      }
+    } else {
+      this.notifyDeliveryTeam(order)
+    }
+  }
+
+  notifyVideoCompleted(order: Order) {
+    this.notifyDeliveryTeam(order)
+  }
+
   private notifyDeliveryTeam(order: Order) {
-    const deliveryStaff = this.staff.filter((s) => s.role === 'DELIVERY_MANAGER' || s.roles?.includes('DELIVERY_MANAGER'))
+    const deliveryStaff = this.staff.filter((s) =>
+      ['DELIVERY_MANAGER', 'ORDER_MANAGER', 'SUPER_ADMIN'].includes(s.role) ||
+      s.roles?.some((r) => ['DELIVERY_MANAGER', 'ORDER_MANAGER', 'SUPER_ADMIN'].includes(r))
+    )
     deliveryStaff.forEach((del) => {
       this.createNotification({
         user_id: del.id,
         title: 'অর্ডার ডেলিভারির জন্য প্রস্তুত!',
-        message: `${order.order_number}: কোয়ালিটি টেস্ট পাশ করেছে। ক্লায়েন্ট ডেলিভারি নিশ্চিত করুন।`,
+        message: `${order.order_number}: ${order.title} এর কাজ সম্পন্ন হয়েছে। ক্লায়েন্ট ডেলিভারি নিশ্চিত করুন।`,
         link: `/delivery?orderId=${order.id}`,
         type: 'SUCCESS',
       })
@@ -1378,30 +1434,85 @@ class DataService {
   // -------------------------------------------------------------
   // NOTIFICATIONS
   // -------------------------------------------------------------
-  async getNotifications(userId?: string): Promise<NotificationItem[]> {
+  async getNotifications(userId?: string, userRole?: UserRole): Promise<NotificationItem[]> {
+    let merged: NotificationItem[] = [...this.notifications]
+
     if (await this.checkLiveSupport()) {
       try {
         let q = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(50)
         if (userId && isUuid(userId)) {
-          q = q.eq('user_id', userId)
+          q = q.or(`user_id.eq.${userId},user_id.eq.all`)
         }
         const { data, error } = await q
         if (!error && data && data.length > 0) {
           const liveList = data as NotificationItem[]
           const liveIds = new Set(liveList.map((n) => n.id))
           const localOnly = this.notifications.filter((n) => !liveIds.has(n.id))
-          const merged = [...liveList, ...localOnly]
+          merged = [...liveList, ...localOnly]
           this.notifications = merged
           saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
-          return userId ? merged.filter((n) => n.user_id === userId) : merged
         }
       } catch (err) {
         console.warn('Supabase getNotifications error:', err)
       }
     }
 
-    if (!userId) return [...this.notifications]
-    return this.notifications.filter((n) => n.user_id === userId)
+    // Role-specific filtering
+    return merged.filter((n) => {
+      // 1. User check (if item is tagged for a specific user, ensure match)
+      if (userId && n.user_id && n.user_id !== 'all' && n.user_id !== userId) {
+        return false
+      }
+
+      const link = (n.link || '').toLowerCase()
+      const title = n.title || ''
+      const message = n.message || ''
+
+      // 2. Strict Role Segregation
+      if (userRole === 'AUDIO_DESIGNER') {
+        const isAudio =
+          link.includes('/audio') ||
+          title.includes('অডিও') ||
+          message.includes('অডিও') ||
+          title.includes('সাউন্ড') ||
+          message.includes('সাউন্ড')
+
+        const isVideoOnlyOrDelivery =
+          link.includes('/video') ||
+          title.includes('ভিডিও') ||
+          message.includes('ভিডিও এডিটিং') ||
+          link.includes('/delivery') ||
+          title.includes('ডেলিভারি') ||
+          message.includes('ডেলিভারি')
+
+        return isAudio && !isVideoOnlyOrDelivery
+      }
+
+      if (userRole === 'VIDEO_EDITOR') {
+        const isVideo =
+          link.includes('/video') ||
+          title.includes('ভিডিও') ||
+          message.includes('ভিডিও')
+
+        const isAudioOnlyOrDelivery =
+          (link.includes('/audio') || link.includes('/delivery') || title.includes('ডেলিভারি')) &&
+          !title.includes('ভিডিও') &&
+          !message.includes('ভিডিও')
+
+        return isVideo && !isAudioOnlyOrDelivery
+      }
+
+      if (userRole === 'DELIVERY_MANAGER') {
+        return (
+          link.includes('/delivery') ||
+          title.includes('ডেলিভারি') ||
+          message.includes('ডেলিভারি')
+        )
+      }
+
+      // SUPER_ADMIN and other management roles can view all notifications
+      return true
+    })
   }
 
   async markNotificationAsRead(id: string): Promise<void> {
