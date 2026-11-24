@@ -49,6 +49,11 @@ export const OrdersListPage: React.FC = () => {
 
   useEffect(() => {
     loadData()
+    const onSync = () => {
+      loadData()
+    }
+    window.addEventListener('hitune:data-synced', onSync)
+    return () => window.removeEventListener('hitune:data-synced', onSync)
   }, [])
 
   // Filtered orders

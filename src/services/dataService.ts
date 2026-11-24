@@ -91,12 +91,160 @@ class DataService {
   }
 
   // -------------------------------------------------------------
+  // CLOUD SYNC ENGINE (PC <-> MOBILE AUTO-SYNC)
+  // -------------------------------------------------------------
+  async syncLocalOrderToCloud(order: Order): Promise<Order | null> {
+    if (!isSupabaseConfigured) return null
+
+    // 1. Resolve safe category UUID
+    await this.getCategories()
+    let safeCatId: string | null = isUuid(order.category_id) ? order.category_id : null
+    if (!safeCatId && order.category) {
+      const matched = this.categories.find(
+        (c) => isUuid(c.id) && (c.slug === order.category?.slug || c.id === order.category?.id)
+      )
+      if (matched) safeCatId = matched.id
+    }
+    if (!safeCatId && this.categories.length > 0) {
+      const firstValid = this.categories.find((c) => isUuid(c.id))
+      if (firstValid) safeCatId = firstValid.id
+    }
+
+    // 2. Resolve safe staff UUIDs
+    const safeAudioId = isUuid(order.assigned_audio_staff_id) ? order.assigned_audio_staff_id : null
+    const safeVideoId = isUuid(order.assigned_video_staff_id) ? order.assigned_video_staff_id : null
+    const safeCreatedBy = isUuid(order.created_by) ? order.created_by : null
+
+    const insertPayload: any = {
+      title: order.title,
+      client_name: order.client_name,
+      client_phone: order.client_phone,
+      client_address: order.client_address || '',
+      category_id: safeCatId,
+      priority: order.priority || 'NORMAL',
+      deadline: order.deadline || null,
+      audio_required: order.audio_required ?? true,
+      video_required: order.video_required ?? false,
+      overall_status: order.overall_status || 'NEW',
+      total_amount: Number(order.total_amount) || 0,
+      advance_amount: Number(order.advance_amount) || 0,
+      paid_amount: Number(order.paid_amount) || 0,
+      due_amount: Number(order.due_amount) || 0,
+      payment_status: order.payment_status || 'UNPAID',
+      description: order.description || '',
+      internal_instructions: order.internal_instructions || '',
+      assigned_audio_staff_id: safeAudioId,
+      assigned_video_staff_id: safeVideoId,
+      created_by: safeCreatedBy,
+    }
+
+    if (order.order_number && order.order_number.startsWith('HT-')) {
+      insertPayload.order_number = order.order_number
+    }
+
+    try {
+      const { data: createdRow, error: insertError } = await supabase
+        .from('orders')
+        .insert(insertPayload)
+        .select('*, category:order_categories(*)')
+        .single()
+
+      if (!insertError && createdRow) {
+        const oldId = order.id
+        order.id = createdRow.id
+        order.order_number = createdRow.order_number || order.order_number
+        if (createdRow.category) order.category = createdRow.category
+
+        // Sync order details if available
+        if (order.details && Object.keys(order.details).length > 0) {
+          try {
+            await supabase.from('order_details').insert({
+              order_id: createdRow.id,
+              ...order.details,
+            })
+          } catch {}
+        }
+
+        // If order was delivered, record in deliveries
+        if (order.overall_status === 'DELIVERED') {
+          try {
+            await supabase.from('deliveries').upsert({
+              order_id: createdRow.id,
+              delivery_method: 'ONLINE',
+              recipient_name: order.client_name,
+              recipient_phone: order.client_phone,
+              confirmation_status: 'DELIVERED',
+              notes: 'অর্ডার সম্পন্ন ও ডেলিভারি নিশ্চিত করা হয়েছে',
+            })
+          } catch {}
+        }
+
+        // Remap comments / submissions keys in local memory
+        if (this.comments[oldId]) {
+          this.comments[createdRow.id] = this.comments[oldId]
+          delete this.comments[oldId]
+          saveLocal(STORAGE_KEYS.COMMENTS, this.comments)
+        }
+        if (this.submissions[oldId]) {
+          this.submissions[createdRow.id] = this.submissions[oldId]
+          delete this.submissions[oldId]
+          saveLocal(STORAGE_KEYS.SUBMISSIONS, this.submissions)
+        }
+        if (this.revisions[oldId]) {
+          this.revisions[createdRow.id] = this.revisions[oldId]
+          delete this.revisions[oldId]
+          saveLocal(STORAGE_KEYS.REVISIONS, this.revisions)
+        }
+
+        saveLocal(STORAGE_KEYS.ORDERS, this.orders)
+        return order
+      } else if (insertError) {
+        console.warn('syncLocalOrderToCloud failed:', insertError.message)
+      }
+    } catch (err: any) {
+      console.warn('syncLocalOrderToCloud exception:', err.message)
+    }
+
+    return null
+  }
+
+  async syncAllToCloud(): Promise<{ syncedOrdersCount: number; success: boolean }> {
+    if (!isSupabaseConfigured) return { syncedOrdersCount: 0, success: false }
+
+    let syncedCount = 0
+    try {
+      const { data: remoteOrders } = await supabase.from('orders').select('id, order_number')
+      const remoteIds = new Set((remoteOrders || []).map((r: any) => r.id))
+      const remoteNumbers = new Set((remoteOrders || []).map((r: any) => r.order_number))
+
+      const unsynced = this.orders.filter(
+        (o) => !remoteIds.has(o.id) && (!o.order_number || !remoteNumbers.has(o.order_number))
+      )
+
+      for (const ord of unsynced) {
+        const res = await this.syncLocalOrderToCloud(ord)
+        if (res) syncedCount++
+      }
+
+      // Re-fetch all orders to ensure full sync
+      await this.getOrders()
+      return { syncedOrdersCount: syncedCount, success: true }
+    } catch (err) {
+      console.warn('syncAllToCloud error:', err)
+      return { syncedOrdersCount: syncedCount, success: false }
+    }
+  }
+
+  // -------------------------------------------------------------
   // ORDERS
   // -------------------------------------------------------------
   async getOrders(): Promise<Order[]> {
-    // 1. Ensure staff is loaded so we can accurately attach staff profiles
+    // 1. Ensure staff & categories are loaded
     if (this.staff.length === 0) {
       await this.getStaff()
+    }
+    if (this.categories.length === 0 || !this.categories.some((c) => isUuid(c.id))) {
+      await this.getCategories()
     }
 
     if (await this.checkLiveSupport()) {
@@ -119,12 +267,20 @@ class DataService {
             revisions: this.revisions[o.id] || [],
           }))
 
-          // Merge local-only orders that haven't synced to Supabase yet
           const liveIds = new Set(liveOrders.map((o) => o.id))
           const liveNumbers = new Set(liveOrders.map((o) => o.order_number))
+
+          // Detect any local-only orders
           const localOnly = this.orders.filter(
-            (loc) => !liveIds.has(loc.id) && !liveNumbers.has(loc.order_number)
+            (loc) => !liveIds.has(loc.id) && (!loc.order_number || !liveNumbers.has(loc.order_number))
           )
+
+          // Background upload any local-only orders to Supabase
+          if (localOnly.length > 0) {
+            for (const locOrder of localOnly) {
+              this.syncLocalOrderToCloud(locOrder).catch(() => {})
+            }
+          }
 
           const merged = [...liveOrders, ...localOnly]
           this.orders = merged
@@ -153,15 +309,21 @@ class DataService {
 
     if (await this.checkLiveSupport()) {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('orders')
           .select(`
             *,
             category:order_categories(*),
             details:order_details(*)
           `)
-          .or(`id.eq.${id},order_number.eq.${id}`)
-          .maybeSingle()
+
+        if (isUuid(id)) {
+          query = query.eq('id', id)
+        } else {
+          query = query.eq('order_number', id)
+        }
+
+        const { data, error } = await query.maybeSingle()
 
         if (!error && data) {
           const liveOrder: Order = {
@@ -257,10 +419,9 @@ class DataService {
       newOrder.assigned_video_staff = this.staff.find((s) => s.id === payload.assigned_video_staff_id) || null
     }
 
-    // 2. Sync to Supabase if live support is on
+    // 2. Sync to Supabase directly
     if (await this.checkLiveSupport()) {
       try {
-        // Resolve safe UUIDs for Supabase foreign keys
         const safeCategoryId = isUuid(matchedCat?.id) ? matchedCat?.id : null
         const safeAudioStaffId = isUuid(newOrder.assigned_audio_staff_id) ? newOrder.assigned_audio_staff_id : null
         const safeVideoStaffId = isUuid(newOrder.assigned_video_staff_id) ? newOrder.assigned_video_staff_id : null
@@ -382,14 +543,19 @@ class DataService {
     if (await this.checkLiveSupport()) {
       try {
         const safeStaffId = isUuid(staffId) ? staffId : null
-        await supabase
+        let updateQuery = supabase
           .from('orders')
           .update({
             assigned_audio_staff_id: safeStaffId,
             overall_status: this.orders[idx].overall_status,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', orderId)
+
+        if (isUuid(orderId)) {
+          await updateQuery.eq('id', orderId)
+        } else if (this.orders[idx].order_number) {
+          await updateQuery.eq('order_number', this.orders[idx].order_number)
+        }
       } catch (err) {
         console.warn('Supabase claimAudioOrder failed:', err)
       }
@@ -415,14 +581,19 @@ class DataService {
     if (await this.checkLiveSupport()) {
       try {
         const safeStaffId = isUuid(staffId) ? staffId : null
-        await supabase
+        let updateQuery = supabase
           .from('orders')
           .update({
             assigned_video_staff_id: safeStaffId,
             overall_status: this.orders[idx].overall_status,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', orderId)
+
+        if (isUuid(orderId)) {
+          await updateQuery.eq('id', orderId)
+        } else if (this.orders[idx].order_number) {
+          await updateQuery.eq('order_number', this.orders[idx].order_number)
+        }
       } catch (err) {
         console.warn('Supabase claimVideoOrder failed:', err)
       }
@@ -442,13 +613,18 @@ class DataService {
 
     if (await this.checkLiveSupport()) {
       try {
-        await supabase
+        let updateQuery = supabase
           .from('orders')
           .update({
             overall_status: status,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', orderId)
+
+        if (isUuid(orderId)) {
+          await updateQuery.eq('id', orderId)
+        } else if (this.orders[idx].order_number) {
+          await updateQuery.eq('order_number', this.orders[idx].order_number)
+        }
       } catch (e) {
         console.warn('Could not update order status in Supabase:', e)
       }
@@ -503,7 +679,12 @@ class DataService {
           updatePayload.assigned_video_staff_id = isUuid(updates.assigned_video_staff_id) ? updates.assigned_video_staff_id : null
         }
 
-        await supabase.from('orders').update(updatePayload).eq('id', orderId)
+        let updateQuery = supabase.from('orders').update(updatePayload)
+        if (isUuid(orderId)) {
+          await updateQuery.eq('id', orderId)
+        } else if (existing.order_number) {
+          await updateQuery.eq('order_number', existing.order_number)
+        }
       } catch (e) {
         console.warn('Could not update order in Supabase:', e)
       }
@@ -557,6 +738,35 @@ class DataService {
     this.submissions[payload.order_id].unshift(newSub)
     saveLocal(STORAGE_KEYS.SUBMISSIONS, this.submissions)
 
+    // Sync to Supabase if order is stored in cloud
+    if (await this.checkLiveSupport()) {
+      try {
+        const targetId = isUuid(payload.order_id) ? payload.order_id : order.id
+        if (isUuid(targetId)) {
+          const safeSubmitter = isUuid(payload.submitted_by) ? payload.submitted_by : null
+          const { data: subRow } = await supabase.from('task_submissions').insert({
+            order_id: targetId,
+            submitted_by: safeSubmitter,
+            submission_type: payload.submission_type,
+            file_name: payload.file_name,
+            file_url: payload.file_url || null,
+            google_drive_link: payload.google_drive_link || null,
+            file_type: newSub.file_type,
+            file_size: newSub.file_size,
+            notes: payload.notes || null,
+            version_number: versionNumber,
+            status: 'PENDING_REVIEW',
+          }).select().maybeSingle()
+
+          if (subRow) {
+            newSub.id = subRow.id
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase submitWork sync error:', err)
+      }
+    }
+
     const nextStatus: OrderOverallStatus = payload.department === 'AUDIO' ? 'AUDIO_QC' : 'VIDEO_QC'
     await this.updateOrderStatus(payload.order_id, nextStatus)
 
@@ -575,6 +785,31 @@ class DataService {
   }
 
   async getSubmissions(orderId: string): Promise<TaskSubmission[]> {
+    if (await this.checkLiveSupport()) {
+      try {
+        const ord = await this.getOrderById(orderId)
+        const targetId = isUuid(orderId) ? orderId : ord?.id
+        if (targetId && isUuid(targetId)) {
+          const { data, error } = await supabase
+            .from('task_submissions')
+            .select('*')
+            .eq('order_id', targetId)
+            .order('version_number', { ascending: false })
+
+          if (!error && data && data.length > 0) {
+            const mapped: TaskSubmission[] = data.map((s: any) => ({
+              ...s,
+              submitter: this.staff.find((st) => st.id === s.submitted_by) || null,
+            }))
+            this.submissions[orderId] = mapped
+            saveLocal(STORAGE_KEYS.SUBMISSIONS, this.submissions)
+            return mapped
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase getSubmissions error:', err)
+      }
+    }
     return this.submissions[orderId] || []
   }
 
@@ -592,6 +827,12 @@ class DataService {
     if (sub) {
       sub.status = 'APPROVED'
       saveLocal(STORAGE_KEYS.SUBMISSIONS, this.submissions)
+    }
+
+    if (await this.checkLiveSupport() && isUuid(submissionId)) {
+      try {
+        await supabase.from('task_submissions').update({ status: 'APPROVED' }).eq('id', submissionId)
+      } catch {}
     }
 
     let nextStatus: OrderOverallStatus
@@ -656,6 +897,25 @@ class DataService {
     this.revisions[orderId].unshift(newRev)
     saveLocal(STORAGE_KEYS.REVISIONS, this.revisions)
 
+    if (await this.checkLiveSupport()) {
+      try {
+        const targetOrderId = isUuid(orderId) ? orderId : order.id
+        if (isUuid(targetOrderId)) {
+          const safeReq = isUuid(requestedBy) ? requestedBy : null
+          await supabase.from('revisions').insert({
+            order_id: targetOrderId,
+            department,
+            revision_number: revNumber,
+            instructions,
+            requested_by: safeReq,
+            status: 'PENDING',
+          })
+        }
+      } catch (err) {
+        console.warn('Supabase requestRevision sync error:', err)
+      }
+    }
+
     const revStatus: OrderOverallStatus = department === 'AUDIO' ? 'AUDIO_REVISION' : 'VIDEO_REVISION'
     await this.updateOrderStatus(orderId, revStatus, `রিভিশন অনুরোধ #${revNumber}: ${instructions}`)
 
@@ -701,6 +961,28 @@ class DataService {
       'DELIVERED',
       `ডেলিভারি সম্পন্ন হয়েছে (${payload.delivery_method})। গ্রহণকারী: ${payload.recipient_name} (${payload.recipient_phone})`
     )
+
+    if (await this.checkLiveSupport()) {
+      try {
+        const ord = await this.getOrderById(orderId)
+        const targetId = isUuid(orderId) ? orderId : ord?.id
+        if (targetId && isUuid(targetId)) {
+          const safeDeliveredBy = isUuid(payload.delivered_by) ? payload.delivered_by : null
+          await supabase.from('deliveries').upsert({
+            order_id: targetId,
+            delivered_by: safeDeliveredBy,
+            delivery_method: payload.delivery_method,
+            recipient_name: payload.recipient_name,
+            recipient_phone: payload.recipient_phone,
+            notes: payload.notes || null,
+            confirmation_status: 'DELIVERED',
+          })
+        }
+      } catch (err) {
+        console.warn('Supabase markDelivered sync error:', err)
+      }
+    }
+
     return updated
   }
 
@@ -708,6 +990,31 @@ class DataService {
   // COMMENTS
   // -------------------------------------------------------------
   async getComments(orderId: string): Promise<OrderComment[]> {
+    if (await this.checkLiveSupport()) {
+      try {
+        const ord = await this.getOrderById(orderId)
+        const targetId = isUuid(orderId) ? orderId : ord?.id
+        if (targetId && isUuid(targetId)) {
+          const { data, error } = await supabase
+            .from('order_comments')
+            .select('*')
+            .eq('order_id', targetId)
+            .order('created_at', { ascending: true })
+
+          if (!error && data && data.length > 0) {
+            const mapped: OrderComment[] = data.map((c: any) => ({
+              ...c,
+              user: this.staff.find((st) => st.id === c.user_id) || undefined,
+            }))
+            this.comments[orderId] = mapped
+            saveLocal(STORAGE_KEYS.COMMENTS, this.comments)
+            return mapped
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase getComments error:', err)
+      }
+    }
     return this.comments[orderId] || []
   }
 
@@ -728,12 +1035,16 @@ class DataService {
 
     if (await this.checkLiveSupport()) {
       try {
-        const safeUserId = isUuid(userId) ? userId : null
-        await supabase.from('order_comments').insert({
-          order_id: orderId,
-          user_id: safeUserId,
-          message,
-        })
+        const ord = await this.getOrderById(orderId)
+        const targetId = isUuid(orderId) ? orderId : ord?.id
+        if (targetId && isUuid(targetId)) {
+          const safeUserId = isUuid(userId) ? userId : null
+          await supabase.from('order_comments').insert({
+            order_id: targetId,
+            user_id: safeUserId,
+            message,
+          })
+        }
       } catch (err) {
         console.warn('Supabase addComment failed:', err)
       }
@@ -746,6 +1057,25 @@ class DataService {
   // PAYMENTS & EXPENSES
   // -------------------------------------------------------------
   async getPayments(): Promise<Payment[]> {
+    if (await this.checkLiveSupport()) {
+      try {
+        const { data, error } = await supabase.from('payments').select('*').order('created_at', { ascending: false })
+        if (!error && data && data.length > 0) {
+          const livePayments: Payment[] = data.map((p: any) => ({
+            ...p,
+            recorder: this.staff.find((s) => s.id === p.recorded_by) || null,
+          }))
+          const liveIds = new Set(livePayments.map((p) => p.id))
+          const localOnly = this.payments.filter((loc) => !liveIds.has(loc.id))
+          const merged = [...livePayments, ...localOnly]
+          this.payments = merged
+          saveLocal(STORAGE_KEYS.PAYMENTS, this.payments)
+          return merged
+        }
+      } catch (err) {
+        console.warn('Supabase getPayments error:', err)
+      }
+    }
     return [...this.payments]
   }
 
@@ -776,13 +1106,13 @@ class DataService {
     saveLocal(STORAGE_KEYS.PAYMENTS, this.payments)
 
     // Recalculate order financials
-    const orderIdx = this.orders.findIndex((o) => o.id === payload.order_id)
+    const orderIdx = this.orders.findIndex((o) => o.id === payload.order_id || o.order_number === payload.order_number)
     if (orderIdx !== -1) {
       const order = this.orders[orderIdx]
       const orderTotal = Number(order.total_amount) || 0
       const orderDiscount = Number(order.discount_amount) || 0
 
-      const allOrderPayments = this.payments.filter((p) => p.order_id === order.id)
+      const allOrderPayments = this.payments.filter((p) => p.order_id === order.id || p.order_number === order.order_number)
       const totalPaid = allOrderPayments.reduce((sum, p) => sum + Number(p.amount), 0)
       const due = Math.max(0, orderTotal - orderDiscount - totalPaid)
 
@@ -795,17 +1125,29 @@ class DataService {
 
       if (await this.checkLiveSupport()) {
         try {
-          await supabase
-            .from('orders')
-            .update({
-              paid_amount: totalPaid,
-              due_amount: due,
-              payment_status: order.payment_status,
-              updated_at: new Date().toISOString(),
+          const targetOrderId = isUuid(order.id) ? order.id : null
+          if (targetOrderId) {
+            await supabase.from('payments').insert({
+              order_id: targetOrderId,
+              amount: newPayment.amount,
+              payment_method: newPayment.payment_method,
+              transaction_reference: newPayment.transaction_reference,
+              notes: newPayment.notes,
+              recorded_by: isUuid(newPayment.recorded_by) ? newPayment.recorded_by : null,
             })
-            .eq('id', payload.order_id)
+
+            await supabase
+              .from('orders')
+              .update({
+                paid_amount: totalPaid,
+                due_amount: due,
+                payment_status: order.payment_status,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', targetOrderId)
+          }
         } catch (err) {
-          console.warn('Could not sync payment to Supabase orders table:', err)
+          console.warn('Could not sync payment to Supabase:', err)
         }
       }
     }
@@ -814,6 +1156,26 @@ class DataService {
   }
 
   async getExpenses(): Promise<Expense[]> {
+    if (await this.checkLiveSupport()) {
+      try {
+        const { data, error } = await supabase.from('expenses').select('*, category:expense_categories(*)').order('expense_date', { ascending: false })
+        if (!error && data && data.length > 0) {
+          const liveExpenses: Expense[] = data.map((e: any) => ({
+            ...e,
+            category: e.category || this.expenseCategories.find((c) => c.id === e.category_id) || null,
+            recorder: this.staff.find((s) => s.id === e.recorded_by) || null,
+          }))
+          const liveIds = new Set(liveExpenses.map((e) => e.id))
+          const localOnly = this.expenses.filter((loc) => !liveIds.has(loc.id))
+          const merged = [...liveExpenses, ...localOnly]
+          this.expenses = merged
+          saveLocal(STORAGE_KEYS.EXPENSES, this.expenses)
+          return merged
+        }
+      } catch (err) {
+        console.warn('Supabase getExpenses error:', err)
+      }
+    }
     return [...this.expenses]
   }
 
@@ -845,10 +1207,40 @@ class DataService {
 
     this.expenses.unshift(newExpense)
     saveLocal(STORAGE_KEYS.EXPENSES, this.expenses)
+
+    if (await this.checkLiveSupport()) {
+      try {
+        await supabase.from('expenses').insert({
+          category_id: isUuid(payload.category_id) ? payload.category_id : null,
+          title: payload.title,
+          amount: newExpense.amount,
+          expense_date: newExpense.expense_date,
+          payment_method: newExpense.payment_method,
+          reference_no: newExpense.reference_no,
+          notes: newExpense.notes,
+          recorded_by: isUuid(payload.recorded_by) ? payload.recorded_by : null,
+        })
+      } catch (err) {
+        console.warn('Supabase recordExpense failed:', err)
+      }
+    }
+
     return newExpense
   }
 
   async getExpenseCategories(): Promise<ExpenseCategory[]> {
+    if (await this.checkLiveSupport()) {
+      try {
+        const { data, error } = await supabase.from('expense_categories').select('*').order('name_bn', { ascending: true })
+        if (!error && data && data.length > 0) {
+          this.expenseCategories = data as ExpenseCategory[]
+          saveLocal(STORAGE_KEYS.EXPENSE_CATEGORIES, this.expenseCategories)
+          return this.expenseCategories
+        }
+      } catch (err) {
+        console.warn('Supabase getExpenseCategories error:', err)
+      }
+    }
     return [...this.expenseCategories]
   }
 
@@ -861,14 +1253,25 @@ class DataService {
     }
     this.expenseCategories.push(newCat)
     saveLocal(STORAGE_KEYS.EXPENSE_CATEGORIES, this.expenseCategories)
+
+    if (await this.checkLiveSupport()) {
+      try {
+        const { data } = await supabase.from('expense_categories').insert({ name, name_bn }).select().maybeSingle()
+        if (data) newCat.id = data.id
+      } catch {}
+    }
+
     return newCat
   }
 
   // -------------------------------------------------------------
-  // DASHBOARD METRICS
+  // DASHBOARD METRICS (ALWAYS FRESH FROM CLOUD & LOCAL MERGE)
   // -------------------------------------------------------------
   async getDashboardStats() {
-    const orders = this.orders
+    const orders = await this.getOrders()
+    const payments = await this.getPayments()
+    const expenses = await this.getExpenses()
+
     const totalOrders = orders.length
     const newOrders = orders.filter((o) => o.overall_status === 'NEW').length
     const pendingOrders = orders.filter((o) => 
@@ -888,11 +1291,11 @@ class DataService {
     const cancelled = orders.filter((o) => o.overall_status === 'CANCELLED').length
 
     const todayStr = new Date().toISOString().split('T')[0]
-    const todayOrders = orders.filter((o) => o.created_at.startsWith(todayStr))
+    const todayOrders = orders.filter((o) => o.created_at && o.created_at.startsWith(todayStr))
 
-    const totalReceivedPayments = this.payments.reduce((sum, p) => sum + Number(p.amount), 0)
-    const totalOutstandingBalances = orders.reduce((sum, o) => sum + Number(o.due_amount), 0)
-    const totalExpenses = this.expenses.reduce((sum, e) => sum + Number(e.amount), 0)
+    const totalReceivedPayments = payments.reduce((sum, p) => sum + Number(p.amount), 0)
+    const totalOutstandingBalances = orders.reduce((sum, o) => sum + Number(o.due_amount || 0), 0)
+    const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0)
     const netCashBalance = totalReceivedPayments - totalExpenses
 
     return {
@@ -928,7 +1331,6 @@ class DataService {
         const { data, error } = await q
         if (!error && data && data.length > 0) {
           const liveList = data as NotificationItem[]
-          // Merge with any local notifications
           const liveIds = new Set(liveList.map((n) => n.id))
           const localOnly = this.notifications.filter((n) => !liveIds.has(n.id))
           const merged = [...liveList, ...localOnly]
@@ -952,7 +1354,7 @@ class DataService {
       saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
     }
 
-    if (await this.checkLiveSupport()) {
+    if (await this.checkLiveSupport() && isUuid(id)) {
       try {
         await supabase.from('notifications').update({ is_read: true }).eq('id', id)
       } catch (e) {
@@ -967,11 +1369,9 @@ class DataService {
     })
     saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
 
-    if (await this.checkLiveSupport()) {
+    if (await this.checkLiveSupport() && isUuid(userId)) {
       try {
-        if (isUuid(userId)) {
-          await supabase.from('notifications').update({ is_read: true }).eq('user_id', userId)
-        }
+        await supabase.from('notifications').update({ is_read: true }).eq('user_id', userId)
       } catch (e) {
         console.warn('Supabase markAllNotificationsAsRead failed:', e)
       }
@@ -988,7 +1388,6 @@ class DataService {
     this.notifications.unshift(notif)
     saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
 
-    // Attempt live Supabase sync
     if (isSupabaseConfigured && isUuid(item.user_id)) {
       Promise.resolve(
         supabase

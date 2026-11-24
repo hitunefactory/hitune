@@ -12,6 +12,7 @@ import {
   Layers,
   CheckCircle,
   User,
+  RefreshCw,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
@@ -37,6 +38,26 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [syncing, setSyncing] = useState(false)
+  const [syncMessage, setSyncMessage] = useState('')
+
+  const handleCloudSync = async () => {
+    setSyncing(true)
+    setSyncMessage('')
+    try {
+      const res = await dataService.syncAllToCloud()
+      window.dispatchEvent(new CustomEvent('hitune:data-synced', { detail: res }))
+      await loadNotifications()
+      setSyncMessage(res.syncedOrdersCount > 0 ? `${res.syncedOrdersCount} টি অর্ডার ক্লাউডে সিঙ্ক হয়েছে` : 'ক্লাউড সিঙ্ক সফল')
+      setTimeout(() => setSyncMessage(''), 3000)
+    } catch (err) {
+      console.error('Cloud sync error:', err)
+      setSyncMessage('সিঙ্ক ব্যর্থ হয়েছে')
+      setTimeout(() => setSyncMessage(''), 3000)
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const loadNotifications = async () => {
     if (!user) return
@@ -157,6 +178,28 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
             )}
           </div>
         )}
+
+        {/* Cloud Sync Button */}
+        <div className="relative">
+          <button
+            onClick={handleCloudSync}
+            disabled={syncing}
+            className={cn(
+              "p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5 text-xs",
+              syncing && "text-blue-400"
+            )}
+            title="ক্লাউড ডাটা সিঙ্ক করুন (মোবাইল ও পিসি সংযোগ)"
+          >
+            <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin text-blue-400")} />
+            <span className="hidden md:inline text-[11px] font-medium">সিঙ্ক</span>
+          </button>
+
+          {syncMessage && (
+            <div className="absolute right-0 top-full mt-2 px-3 py-1.5 bg-emerald-950/95 border border-emerald-500/50 rounded-xl text-[11px] text-emerald-300 shadow-xl whitespace-nowrap z-50 animate-in fade-in">
+              ✓ {syncMessage}
+            </div>
+          )}
+        </div>
 
         {/* Theme Toggle */}
         <button

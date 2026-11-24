@@ -57,6 +57,11 @@ export const AudioDeptPage: React.FC = () => {
 
   useEffect(() => {
     loadAudioOrders()
+    const onSync = () => {
+      loadAudioOrders()
+    }
+    window.addEventListener('hitune:data-synced', onSync)
+    return () => window.removeEventListener('hitune:data-synced', onSync)
   }, [])
 
   const handleStartWork = async (orderId: string) => {

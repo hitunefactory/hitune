@@ -74,6 +74,11 @@ export const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     loadDashboardData()
+    const handleSync = () => {
+      loadDashboardData()
+    }
+    window.addEventListener('hitune:data-synced', handleSync)
+    return () => window.removeEventListener('hitune:data-synced', handleSync)
   }, [])
 
   if (loading || !stats) {

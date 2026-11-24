@@ -1,12 +1,44 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { cn } from '../../lib/utils'
+import { dataService } from '../../services/dataService'
 
 export const AppLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Auto-sync on window focus or visibility change (switching tabs or opening mobile browser)
+  useEffect(() => {
+    let lastSyncTime = 0
+    const triggerSync = async () => {
+      const now = Date.now()
+      // Throttle sync to at most once every 10 seconds on focus
+      if (now - lastSyncTime < 10000) return
+      lastSyncTime = now
+
+      try {
+        await dataService.getOrders()
+        window.dispatchEvent(new CustomEvent('hitune:data-synced'))
+      } catch (err) {
+        console.warn('Auto sync on focus notice:', err)
+      }
+    }
+
+    const onFocus = () => triggerSync()
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') triggerSync()
+    }
+
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [])
 
   return (
     <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col font-sans">

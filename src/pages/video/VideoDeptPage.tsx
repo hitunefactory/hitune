@@ -54,6 +54,11 @@ export const VideoDeptPage: React.FC = () => {
 
   useEffect(() => {
     loadVideoOrders()
+    const onSync = () => {
+      loadVideoOrders()
+    }
+    window.addEventListener('hitune:data-synced', onSync)
+    return () => window.removeEventListener('hitune:data-synced', onSync)
   }, [])
 
   const handleStartWork = async (orderId: string) => {
