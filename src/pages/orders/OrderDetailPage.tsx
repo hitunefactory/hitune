@@ -28,7 +28,7 @@ import {
 } from 'lucide-react'
 import { dataService } from '../../services/dataService'
 import { Order, TaskSubmission, Revision, OrderComment, Profile, PaymentMethod } from '../../types/database'
-import { StatusBadge, PriorityBadge, PaymentBadge } from '../../components/ui/StatusBadge'
+import { StatusBadge, PaymentBadge } from '../../components/ui/StatusBadge'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatBengaliNumber, formatBengaliDate, formatCurrency } from '../../lib/utils'
 import { STATUS_MAP_BN, PAYMENT_METHOD_MAP_BN } from '../../lib/constants'
@@ -203,7 +203,6 @@ export const OrderDetailPage: React.FC = () => {
                 {order.order_number}
               </span>
               <StatusBadge status={order.overall_status} />
-              <PriorityBadge priority={order.priority} />
             </div>
             <h1 className="text-sm font-medium text-slate-300 mt-0.5">{order.title}</h1>
           </div>

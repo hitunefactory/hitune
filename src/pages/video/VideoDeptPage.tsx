@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { dataService } from '../../services/dataService'
 import { Order } from '../../types/database'
-import { StatusBadge, PriorityBadge } from '../../components/ui/StatusBadge'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatBengaliDate, formatBengaliNumber } from '../../lib/utils'
 
@@ -278,9 +278,8 @@ export const VideoDeptPage: React.FC = () => {
                   </div>
 
                   <h3 className="font-semibold text-slate-100 text-sm line-clamp-1">{ord.title}</h3>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-cyan-400/90 font-medium">{ord.category?.name_bn || 'কাস্টম ভিডিও'}</span>
-                    <PriorityBadge priority={ord.priority} />
+                  <div className="text-xs text-cyan-400/90 font-medium">
+                    {ord.category?.name_bn || 'কাস্টম ভিডিও'}
                   </div>
 
                   {/* My Assignment Badge */}

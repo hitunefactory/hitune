@@ -11,10 +11,10 @@ import {
   Download,
   Eye,
 } from 'lucide-react'
-import { StatusBadge, PriorityBadge, PaymentBadge } from '../../components/ui/StatusBadge'
+import { StatusBadge, PaymentBadge } from '../../components/ui/StatusBadge'
 import { dataService } from '../../services/dataService'
-import { Order, OrderCategory, OrderOverallStatus, OrderPriority } from '../../types/database'
-import { STATUS_MAP_BN, PRIORITY_MAP_BN } from '../../lib/constants'
+import { Order, OrderCategory, OrderOverallStatus } from '../../types/database'
+import { STATUS_MAP_BN } from '../../lib/constants'
 import { formatBengaliNumber, formatBengaliDate, formatCurrency } from '../../lib/utils'
 
 export const OrdersListPage: React.FC = () => {
@@ -29,7 +29,6 @@ export const OrdersListPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState(initialQuery)
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL')
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL')
-  const [selectedPriority, setSelectedPriority] = useState<string>('ALL')
 
   const loadData = async (isSilent = false) => {
     if (!isSilent) setLoading(true)
@@ -75,10 +74,7 @@ export const OrdersListPage: React.FC = () => {
     const matchesStatus =
       selectedStatus === 'ALL' || order.overall_status === selectedStatus
 
-    const matchesPriority =
-      selectedPriority === 'ALL' || order.priority === selectedPriority
-
-    return matchesSearch && matchesCategory && matchesStatus && matchesPriority
+    return matchesSearch && matchesCategory && matchesStatus
   })
 
   return (
@@ -106,7 +102,7 @@ export const OrdersListPage: React.FC = () => {
 
       {/* Filter and Search Controls */}
       <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {/* Search Box */}
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
@@ -150,22 +146,6 @@ export const OrdersListPage: React.FC = () => {
               ))}
             </select>
           </div>
-
-          {/* Priority Filter */}
-          <div>
-            <select
-              value={selectedPriority}
-              onChange={(e) => setSelectedPriority(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="ALL">সকল অগ্রাধিকার</option>
-              {Object.entries(PRIORITY_MAP_BN).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v.label}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
       </div>
 
@@ -189,7 +169,6 @@ export const OrdersListPage: React.FC = () => {
                   <th className="py-3.5 px-4 font-semibold">কাজের বিবরণ ও ক্যাটাগরি</th>
                   <th className="py-3.5 px-4 font-semibold">ক্লায়েন্ট ও যোগাযোগ</th>
                   <th className="py-3.5 px-4 font-semibold">বিভাগ</th>
-                  <th className="py-3.5 px-4 font-semibold">অগ্রাধিকার</th>
                   <th className="py-3.5 px-4 font-semibold">ডেডলাইন</th>
                   <th className="py-3.5 px-4 font-semibold">স্ট্যাটাস</th>
                   <th className="py-3.5 px-4 font-semibold text-right">মূল্য / বকেয়া</th>
@@ -225,9 +204,6 @@ export const OrdersListPage: React.FC = () => {
                           </span>
                         )}
                       </div>
-                    </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <PriorityBadge priority={ord.priority} />
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap text-slate-400">
                       {formatBengaliDate(ord.deadline)}

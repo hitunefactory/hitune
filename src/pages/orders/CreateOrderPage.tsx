@@ -273,7 +273,7 @@ export const CreateOrderPage: React.FC = () => {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        
+
         {/* ========================================================= */}
         {/* ধাপ ১: মূল কাজের টাইপ নির্বাচন (3 Main Categories) */}
         {/* ========================================================= */}
@@ -292,11 +292,10 @@ export const CreateOrderPage: React.FC = () => {
             {/* 1. Election */}
             <div
               onClick={() => handleSelectPrimaryType('ELECTION')}
-              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-3 ${
-                primaryType === 'ELECTION'
+              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-3 ${primaryType === 'ELECTION'
                   ? 'bg-blue-950/40 border-blue-500 shadow-lg shadow-blue-500/10 ring-2 ring-blue-500/30'
                   : 'bg-slate-950/70 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between">
                 <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-xl">
@@ -315,11 +314,10 @@ export const CreateOrderPage: React.FC = () => {
             {/* 2. School / Madrasa */}
             <div
               onClick={() => handleSelectPrimaryType('ADMISSION')}
-              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-3 ${
-                primaryType === 'ADMISSION'
+              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-3 ${primaryType === 'ADMISSION'
                   ? 'bg-emerald-950/40 border-emerald-500 shadow-lg shadow-emerald-500/10 ring-2 ring-emerald-500/30'
                   : 'bg-slate-950/70 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between">
                 <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xl">
@@ -338,11 +336,10 @@ export const CreateOrderPage: React.FC = () => {
             {/* 3. Waz Mahfil */}
             <div
               onClick={() => handleSelectPrimaryType('WAZ')}
-              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-3 ${
-                primaryType === 'WAZ'
+              className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-3 ${primaryType === 'WAZ'
                   ? 'bg-amber-950/40 border-amber-500 shadow-lg shadow-amber-500/10 ring-2 ring-amber-500/30'
                   : 'bg-slate-950/70 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between">
                 <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-xl">
@@ -364,11 +361,10 @@ export const CreateOrderPage: React.FC = () => {
             <button
               type="button"
               onClick={() => handleSelectPrimaryType('CUSTOM')}
-              className={`text-[11px] font-semibold transition px-3 py-1.5 rounded-xl border ${
-                primaryType === 'CUSTOM'
+              className={`text-[11px] font-semibold transition px-3 py-1.5 rounded-xl border ${primaryType === 'CUSTOM'
                   ? 'bg-purple-950/40 border-purple-500 text-purple-300'
                   : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
+                }`}
             >
               + অন্যান্য কাস্টম অর্ডার (গজল / বিজ্ঞাপন)
             </button>
@@ -394,11 +390,10 @@ export const CreateOrderPage: React.FC = () => {
               {/* Option A: Audio Only */}
               <div
                 onClick={() => setWorkFormat('AUDIO_ONLY')}
-                className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
-                  workFormat === 'AUDIO_ONLY'
+                className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between ${workFormat === 'AUDIO_ONLY'
                     ? 'bg-blue-950/40 border-blue-500 ring-2 ring-blue-500/30'
                     : 'bg-slate-950/70 border-slate-800/80 hover:bg-slate-900/60'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <div className="h-9 w-9 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center">
@@ -417,11 +412,10 @@ export const CreateOrderPage: React.FC = () => {
               {/* Option B: Audio & Video */}
               <div
                 onClick={() => setWorkFormat('AUDIO_VIDEO')}
-                className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
-                  workFormat === 'AUDIO_VIDEO'
+                className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between ${workFormat === 'AUDIO_VIDEO'
                     ? 'bg-blue-950/40 border-blue-500 ring-2 ring-blue-500/30'
                     : 'bg-slate-950/70 border-slate-800/80 hover:bg-slate-900/60'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <div className="h-9 w-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
@@ -805,8 +799,8 @@ export const CreateOrderPage: React.FC = () => {
         {primaryType && (
           <div className="p-4 rounded-3xl bg-[#0b1120] border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
             <div className="text-xs text-slate-400">
-              মোট চুক্তি: <strong className="text-white">{formatCurrency(numTotal)}</strong> | 
-              অগ্রিম: <strong className="text-emerald-400">{formatCurrency(numAdvance)}</strong> | 
+              মোট চুক্তি: <strong className="text-white">{formatCurrency(numTotal)}</strong> |
+              অগ্রিম: <strong className="text-emerald-400">{formatCurrency(numAdvance)}</strong> |
               বকেয়া: <strong className="text-amber-400">{formatCurrency(dueBalance)}</strong>
             </div>
 

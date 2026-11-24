@@ -25,7 +25,7 @@ import {
   Phone,
 } from 'lucide-react'
 import { StatCard } from '../../components/dashboard/StatCard'
-import { StatusBadge, PriorityBadge } from '../../components/ui/StatusBadge'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 import { dataService } from '../../services/dataService'
 import { Order, Payment } from '../../types/database'
 import { formatBengaliNumber, formatBengaliDate, formatCurrency, getLocalDateString } from '../../lib/utils'
@@ -438,7 +438,6 @@ export const DashboardPage: React.FC = () => {
                 <th className="py-3 px-4 font-semibold">অর্ডার নং</th>
                 <th className="py-3 px-4 font-semibold">কাজের শিরোনাম ও ক্যাটাগরি</th>
                 <th className="py-3 px-4 font-semibold">ক্লায়েন্ট ও ফোন</th>
-                <th className="py-3 px-4 font-semibold">অগ্রাধিকার</th>
                 <th className="py-3 px-4 font-semibold">ডেডলাইন</th>
                 <th className="py-3 px-4 font-semibold">প্রোডাকশন স্থিতি</th>
                 <th className="py-3 px-4 font-semibold text-right">মোট / বকেয়া</th>
@@ -448,7 +447,7 @@ export const DashboardPage: React.FC = () => {
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400 text-xs">
+                  <td colSpan={7} className="py-12 text-center text-slate-400 text-xs">
                     <div className="space-y-1">
                       <p className="text-slate-300 font-medium">
                         {dateFilter === 'TODAY'
@@ -484,9 +483,6 @@ export const DashboardPage: React.FC = () => {
                           <span>{ord.client_phone}</span>
                         </a>
                       )}
-                    </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <PriorityBadge priority={ord.priority} />
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap text-slate-400">
                       {formatBengaliDate(ord.deadline)}
