@@ -34,6 +34,8 @@ const STORAGE_KEYS = {
   EXPENSES: 'hitune_prod_expenses_v2',
   EXPENSE_CATEGORIES: 'hitune_prod_expcat_v2',
   NOTIFICATIONS: 'hitune_prod_notifications_v2',
+  NOTIF_READ_DAY: 'hitune_prod_notif_read_day_v1',
+  NOTIF_DISMISSED: 'hitune_prod_notif_dismissed_v1',
   COMMENTS: 'hitune_prod_comments_v2',
   SUBMISSIONS: 'hitune_prod_submissions_v2',
   REVISIONS: 'hitune_prod_revisions_v2',
@@ -788,9 +790,24 @@ class DataService {
     saveLocal(STORAGE_KEYS.SUBMISSIONS, this.submissions)
     saveLocal(STORAGE_KEYS.REVISIONS, this.revisions)
 
-    // Clean up payments locally
+    // Clean up payments & notifications locally
     this.payments = this.payments.filter((p) => p.order_id !== orderId)
     saveLocal(STORAGE_KEYS.PAYMENTS, this.payments)
+
+    const removedNotifIds: string[] = []
+    this.notifications = this.notifications.filter((n) => {
+      if (n.link && n.link.includes(orderId)) {
+        removedNotifIds.push(n.id)
+        return false
+      }
+      return true
+    })
+    if (removedNotifIds.length > 0) {
+      saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
+      const dismissed = new Set(loadLocal<string[]>(STORAGE_KEYS.NOTIF_DISMISSED, []))
+      removedNotifIds.forEach((rid) => dismissed.add(rid))
+      saveLocal(STORAGE_KEYS.NOTIF_DISMISSED, Array.from(dismissed))
+    }
 
     if (await this.checkLiveSupport()) {
       try {
@@ -1121,8 +1138,29 @@ class DataService {
       `ডেলিভারি সম্পন্ন হয়েছে (${payload.delivery_method})। গ্রহণকারী: ${payload.recipient_name} (${payload.recipient_phone})`
     )
 
+    // Automatically mark ready-for-delivery notifications for this order as read
+    const todayStr = getLocalDateString(new Date())
+    const readDayMap = loadLocal<Record<string, string>>(STORAGE_KEYS.NOTIF_READ_DAY, {})
+    const deliveredUuidIds: string[] = []
+    let notifChanged = false
+    this.notifications.forEach((n) => {
+      if (n.link && n.link.includes(orderId) && !n.is_read) {
+        n.is_read = true
+        readDayMap[n.id] = todayStr
+        if (isUuid(n.id)) deliveredUuidIds.push(n.id)
+        notifChanged = true
+      }
+    })
+    if (notifChanged) {
+      saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
+      saveLocal(STORAGE_KEYS.NOTIF_READ_DAY, readDayMap)
+    }
+
     if (await this.checkLiveSupport()) {
       try {
+        if (deliveredUuidIds.length > 0) {
+          await supabase.from('notifications').update({ is_read: true }).in('id', deliveredUuidIds)
+        }
         const ord = await this.getOrderById(orderId)
         const targetId = isUuid(orderId) ? orderId : ord?.id
         if (targetId && isUuid(targetId)) {
@@ -1480,6 +1518,55 @@ class DataService {
   // -------------------------------------------------------------
   // NOTIFICATIONS
   // -------------------------------------------------------------
+  private cleanupExpiredNotifications(list: NotificationItem[]): {
+    cleaned: NotificationItem[]
+    expiredUuids: string[]
+  } {
+    const todayStr = getLocalDateString(new Date())
+    const readDayMap = loadLocal<Record<string, string>>(STORAGE_KEYS.NOTIF_READ_DAY, {})
+    const dismissedSet = new Set(loadLocal<string[]>(STORAGE_KEYS.NOTIF_DISMISSED, []))
+    const expiredUuids: string[] = []
+    let readMapChanged = false
+    let dismissedChanged = false
+
+    // Also deduplicate notifications (in case a temporary local ID and cloud UUID share the same content)
+    const seenKeys = new Set<string>()
+
+    const cleaned = list.filter((n) => {
+      if (dismissedSet.has(n.id)) return false
+
+      const dedupKey = `${n.user_id || ''}|${n.title}|${n.message}`
+      if (seenKeys.has(dedupKey)) return false
+      seenKeys.add(dedupKey)
+
+      if (n.is_read) {
+        const effectiveReadDate = readDayMap[n.id] || getLocalDateString(n.created_at)
+        // Purge read notifications from previous days (past midnight 12:00 AM)
+        if (effectiveReadDate < todayStr) {
+          dismissedSet.add(n.id)
+          dismissedChanged = true
+          if (isUuid(n.id)) expiredUuids.push(n.id)
+          if (readDayMap[n.id]) {
+            delete readDayMap[n.id]
+            readMapChanged = true
+          }
+          return false
+        }
+      }
+      // Keep ALL unread notifications regardless of date!
+      return true
+    })
+
+    if (readMapChanged) saveLocal(STORAGE_KEYS.NOTIF_READ_DAY, readDayMap)
+    if (dismissedChanged) {
+      // Keep dismissed list bounded to last 500 IDs
+      const bounded = Array.from(dismissedSet).slice(-500)
+      saveLocal(STORAGE_KEYS.NOTIF_DISMISSED, bounded)
+    }
+
+    return { cleaned, expiredUuids }
+  }
+
   async getNotifications(userId?: string, userRole?: UserRole): Promise<NotificationItem[]> {
     let merged: NotificationItem[] = [...this.notifications]
 
@@ -1490,21 +1577,31 @@ class DataService {
           q = q.or(`user_id.eq.${userId},user_id.eq.all`)
         }
         const { data, error } = await q
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
           const liveList = data as NotificationItem[]
           const liveIds = new Set(liveList.map((n) => n.id))
-          const localOnly = this.notifications.filter((n) => !liveIds.has(n.id))
+          const liveSignatures = new Set(liveList.map((n) => `${n.user_id}|${n.title}|${n.message}`))
+          const localOnly = this.notifications.filter(
+            (n) => !liveIds.has(n.id) && !liveSignatures.has(`${n.user_id}|${n.title}|${n.message}`)
+          )
           merged = [...liveList, ...localOnly]
-          this.notifications = merged
-          saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
         }
       } catch (err) {
         console.warn('Supabase getNotifications error:', err)
       }
     }
 
+    // Apply midnight cleanup for previous days' read notifications (keep unread ones!)
+    const { cleaned, expiredUuids } = this.cleanupExpiredNotifications(merged)
+    this.notifications = cleaned
+    saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
+
+    if (expiredUuids.length > 0 && await this.checkLiveSupport()) {
+      Promise.resolve(supabase.from('notifications').delete().in('id', expiredUuids)).catch(() => {})
+    }
+
     // Role-specific filtering
-    return merged.filter((n) => {
+    return cleaned.filter((n) => {
       // 1. User check (if item is tagged for a specific user, ensure match)
       if (userId && n.user_id && n.user_id !== 'all' && n.user_id !== userId) {
         return false
@@ -1562,26 +1659,113 @@ class DataService {
   }
 
   async markNotificationAsRead(id: string): Promise<void> {
+    const todayStr = getLocalDateString(new Date())
+    const readDayMap = loadLocal<Record<string, string>>(STORAGE_KEYS.NOTIF_READ_DAY, {})
     const notif = this.notifications.find((n) => n.id === id)
+    const targetIds: string[] = [id]
+
     if (notif) {
       notif.is_read = true
+      readDayMap[notif.id] = todayStr
+      // Also mark any identical duplicate
+      this.notifications.forEach((other) => {
+        if (other.id !== notif.id && other.user_id === notif.user_id && other.title === notif.title && other.message === notif.message) {
+          other.is_read = true
+          readDayMap[other.id] = todayStr
+          targetIds.push(other.id)
+        }
+      })
       saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
+      saveLocal(STORAGE_KEYS.NOTIF_READ_DAY, readDayMap)
+    }
+
+    if (await this.checkLiveSupport()) {
+      const uuidTargets = targetIds.filter((tid) => isUuid(tid))
+      if (uuidTargets.length > 0) {
+        try {
+          await supabase.from('notifications').update({ is_read: true }).in('id', uuidTargets)
+        } catch (e) {
+          console.warn('Supabase markNotificationAsRead failed:', e)
+        }
+      }
+    }
+  }
+
+  async markNotificationAsUnread(id: string): Promise<void> {
+    const readDayMap = loadLocal<Record<string, string>>(STORAGE_KEYS.NOTIF_READ_DAY, {})
+    const notif = this.notifications.find((n) => n.id === id)
+    if (notif) {
+      notif.is_read = false
+      delete readDayMap[notif.id]
+      saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
+      saveLocal(STORAGE_KEYS.NOTIF_READ_DAY, readDayMap)
     }
 
     if (await this.checkLiveSupport() && isUuid(id)) {
       try {
-        await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+        await supabase.from('notifications').update({ is_read: false }).eq('id', id)
       } catch (e) {
-        console.warn('Supabase markNotificationAsRead failed:', e)
+        console.warn('Supabase markNotificationAsUnread failed:', e)
+      }
+    }
+  }
+
+  async deleteNotification(id: string): Promise<void> {
+    this.notifications = this.notifications.filter((n) => n.id !== id)
+    saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
+
+    const dismissed = new Set(loadLocal<string[]>(STORAGE_KEYS.NOTIF_DISMISSED, []))
+    dismissed.add(id)
+    saveLocal(STORAGE_KEYS.NOTIF_DISMISSED, Array.from(dismissed).slice(-500))
+
+    if (await this.checkLiveSupport() && isUuid(id)) {
+      try {
+        await supabase.from('notifications').delete().eq('id', id)
+      } catch (e) {
+        console.warn('Supabase deleteNotification failed:', e)
+      }
+    }
+  }
+
+  async clearReadNotifications(userId: string): Promise<void> {
+    const toRemoveIds: string[] = []
+    this.notifications = this.notifications.filter((n) => {
+      const belongsToUser = !n.user_id || n.user_id === 'all' || n.user_id === userId
+      if (belongsToUser && n.is_read) {
+        toRemoveIds.push(n.id)
+        return false
+      }
+      return true
+    })
+    saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
+
+    if (toRemoveIds.length > 0) {
+      const dismissed = new Set(loadLocal<string[]>(STORAGE_KEYS.NOTIF_DISMISSED, []))
+      toRemoveIds.forEach((id) => dismissed.add(id))
+      saveLocal(STORAGE_KEYS.NOTIF_DISMISSED, Array.from(dismissed).slice(-500))
+
+      const uuidTargets = toRemoveIds.filter((id) => isUuid(id))
+      if (uuidTargets.length > 0 && await this.checkLiveSupport()) {
+        try {
+          await supabase.from('notifications').delete().in('id', uuidTargets)
+        } catch (e) {
+          console.warn('Supabase clearReadNotifications failed:', e)
+        }
       }
     }
   }
 
   async markAllNotificationsAsRead(userId: string): Promise<void> {
+    const todayStr = getLocalDateString(new Date())
+    const readDayMap = loadLocal<Record<string, string>>(STORAGE_KEYS.NOTIF_READ_DAY, {})
     this.notifications.forEach((n) => {
-      if (n.user_id === userId) n.is_read = true
+      if (n.user_id === userId || n.user_id === 'all') {
+        n.is_read = true
+        readDayMap[n.id] = todayStr
+      }
     })
     saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
+    saveLocal(STORAGE_KEYS.NOTIF_READ_DAY, readDayMap)
 
     if (await this.checkLiveSupport() && isUuid(userId)) {
       try {
@@ -1593,9 +1777,21 @@ class DataService {
   }
 
   createNotification(item: Omit<NotificationItem, 'id' | 'is_read' | 'created_at'>): NotificationItem {
+    // Prevent duplicate creation for the exact same unread alert within 10 minutes
+    const existing = this.notifications.find(
+      (n) =>
+        !n.is_read &&
+        n.user_id === item.user_id &&
+        n.title === item.title &&
+        n.message === item.message &&
+        Date.now() - new Date(n.created_at).getTime() < 10 * 60 * 1000
+    )
+    if (existing) return existing
+
+    const tempId = `notif-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`
     const notif: NotificationItem = {
       ...item,
-      id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      id: tempId,
       is_read: false,
       created_at: new Date().toISOString(),
     }
@@ -1614,9 +1810,21 @@ class DataService {
             type: item.type || 'INFO',
             is_read: false,
           })
+          .select()
+          .maybeSingle()
       )
-        .then(({ error }: any) => {
-          if (error) console.warn('Supabase createNotification notice:', error.message)
+        .then(({ data, error }: any) => {
+          if (error) {
+            console.warn('Supabase createNotification notice:', error.message)
+          } else if (data?.id) {
+            // Sync local ID with real Supabase UUID so no duplicate entries appear later
+            const target = this.notifications.find((n) => n.id === tempId)
+            if (target) {
+              target.id = data.id
+              target.created_at = data.created_at || target.created_at
+              saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
+            }
+          }
         })
         .catch(() => {})
     }

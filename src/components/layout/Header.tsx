@@ -11,6 +11,10 @@ import {
   ChevronDown,
   Layers,
   CheckCircle,
+  CheckCheck,
+  Check,
+  Trash2,
+  RotateCcw,
   User,
   RefreshCw,
 } from 'lucide-react'
@@ -73,6 +77,7 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
   }, [user, currentRole])
 
   const unreadCount = notifications.filter((n) => !n.is_read).length
+  const readCount = notifications.filter((n) => n.is_read).length
 
   const handleMarkAsRead = async (id: string, link?: string | null) => {
     await dataService.markNotificationAsRead(id)
@@ -98,6 +103,28 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
       }
       navigate(link)
     }
+  }
+
+  const handleToggleReadStatus = async (e: React.MouseEvent, notif: NotificationItem) => {
+    e.stopPropagation()
+    if (notif.is_read) {
+      await dataService.markNotificationAsUnread(notif.id)
+    } else {
+      await dataService.markNotificationAsRead(notif.id)
+    }
+    loadNotifications()
+  }
+
+  const handleDeleteNotification = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    await dataService.deleteNotification(id)
+    loadNotifications()
+  }
+
+  const handleClearRead = async () => {
+    if (!user) return
+    await dataService.clearReadNotifications(user.id)
+    loadNotifications()
   }
 
   const handleMarkAllRead = async () => {
@@ -285,29 +312,40 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
 
           {showNotifMenu && (
             <div className="absolute right-0 mt-2 w-80 sm:w-96 max-w-[calc(100vw-1.5rem)] bg-[#0f172a] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50">
-              <div className="p-3 border-b border-slate-800/80 flex items-center justify-between bg-slate-900/50">
+              <div className="p-3 border-b border-slate-800/80 flex items-center justify-between gap-2 bg-slate-900/70">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-white text-sm">বিজ্ঞপ্তিসমূহ</span>
+                  <span className="font-semibold text-white text-sm">বিজ্ঞপ্তি</span>
                   {unreadCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-xs font-semibold">
+                    <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[11px] font-bold">
                       {formatBengaliNumber(unreadCount)} টি নতুন
                     </span>
                   )}
                 </div>
-                {unreadCount > 0 && (
-                  <button
-                    onClick={handleMarkAllRead}
-                    className="text-xs text-blue-400 hover:text-blue-300 font-medium"
-                  >
-                    সব পঠিত করুন
-                  </button>
-                )}
+                <div className="flex items-center gap-2.5">
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="text-[11px] text-blue-400 hover:text-blue-300 font-semibold cursor-pointer"
+                    >
+                      সব পঠিত
+                    </button>
+                  )}
+                  {readCount > 0 && (
+                    <button
+                      onClick={handleClearRead}
+                      className="text-[11px] text-slate-400 hover:text-rose-400 font-medium cursor-pointer"
+                      title="পঠিত বিজ্ঞপ্তি মুছে ফেলুন"
+                    >
+                      পঠিত মুছুন
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="max-h-80 overflow-y-auto divide-y divide-slate-800/50">
+              <div className="max-h-80 overflow-y-auto divide-y divide-slate-800/60">
                 {notifications.length === 0 ? (
-                  <div className="p-6 text-center text-slate-400 text-xs">
-                    কোন নতুন বিজ্ঞপ্তি নেই
+                  <div className="p-8 text-center text-slate-400 text-xs">
+                    কোনো বিজ্ঞপ্তি নেই
                   </div>
                 ) : (
                   notifications.map((n) => (
@@ -315,22 +353,74 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
                       key={n.id}
                       onClick={() => handleMarkAsRead(n.id, n.link)}
                       className={cn(
-                        'p-3 hover:bg-slate-800/60 transition cursor-pointer flex gap-3',
-                        !n.is_read ? 'bg-blue-950/20' : 'opacity-70'
+                        'p-3 transition cursor-pointer flex items-start gap-2.5 border-l-4 group',
+                        !n.is_read
+                          ? 'bg-blue-950/35 hover:bg-blue-950/55 border-l-blue-500'
+                          : 'bg-slate-900/30 hover:bg-slate-800/40 border-l-transparent opacity-65 hover:opacity-100'
                       )}
                     >
-                      <div className="h-2 w-2 rounded-full mt-1.5 shrink-0 bg-blue-500" />
-                      <div className="flex-1">
-                        <div className="text-xs font-semibold text-white">{n.title}</div>
+                      {/* Read vs Unread Visual Indicator */}
+                      {!n.is_read ? (
+                        <div className="h-2.5 w-2.5 rounded-full mt-1.5 shrink-0 bg-blue-400 ring-4 ring-blue-500/20" />
+                      ) : (
+                        <CheckCheck className="h-3.5 w-3.5 mt-1 shrink-0 text-emerald-500/80" />
+                      )}
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={cn(
+                              'text-xs truncate',
+                              !n.is_read ? 'font-bold text-white' : 'font-medium text-slate-300'
+                            )}
+                          >
+                            {n.title}
+                          </span>
+                          {!n.is_read ? (
+                            <span className="px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300 text-[9px] font-bold shrink-0">
+                              নতুন
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400/90 text-[9px] font-semibold shrink-0">
+                              পঠিত
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[11px] text-slate-300 mt-0.5 leading-snug">{n.message}</div>
-                        <div className="text-[10px] text-slate-500 mt-1">
-                          {new Date(n.created_at).toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' })}
+                        <div className="flex items-center justify-between mt-1.5">
+                          <span className="text-[10px] text-slate-500">
+                            {new Date(n.created_at).toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleReadStatus(e, n)}
+                              className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-blue-400 transition cursor-pointer"
+                              title={n.is_read ? 'অপঠিত করুন' : 'পঠিত করুন'}
+                            >
+                              {n.is_read ? <RotateCcw className="h-3 w-3" /> : <Check className="h-3 w-3 text-blue-400" />}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteNotification(e, n.id)}
+                              className="p-1 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-rose-400 transition cursor-pointer"
+                              title="মুছে ফেলুন"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
                   ))
                 )}
               </div>
+
+              {notifications.length > 0 && (
+                <div className="px-3 py-2 bg-slate-950/70 border-t border-slate-800/80 text-[10px] text-slate-500 text-center">
+                  পঠিত বিজ্ঞপ্তি রাত ১২টার পর স্বয়ংক্রিয়ভাবে মুছে যাবে (অপঠিতগুলো থাকবে)
+                </div>
+              )}
             </div>
           )}
         </div>
