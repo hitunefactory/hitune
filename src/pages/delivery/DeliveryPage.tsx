@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   Truck,
   CheckCircle2,
@@ -23,6 +23,8 @@ import { EditOrderModal } from '../../components/orders/EditOrderModal'
 export const DeliveryPage: React.FC = () => {
   const { user, hasRole } = useAuth()
   const canManageOrders = hasRole(['SUPER_ADMIN', 'ORDER_MANAGER', 'DELIVERY_MANAGER'])
+  const [searchParams] = useSearchParams()
+  const targetOrderId = searchParams.get('orderId')
   const [orders, setOrders] = useState<Order[]>([])
   const [staffList, setStaffList] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,8 +42,8 @@ export const DeliveryPage: React.FC = () => {
   const [deliveryNotes, setDeliveryNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const loadDeliveryOrders = async () => {
-    setLoading(true)
+  const loadDeliveryOrders = async (isSilent = false) => {
+    if (!isSilent) setLoading(true)
     try {
       const [allOrders, staff] = await Promise.all([
         dataService.getOrders(),
@@ -56,7 +58,7 @@ export const DeliveryPage: React.FC = () => {
     } catch (err) {
       console.error('Failed to load delivery orders:', err)
     } finally {
-      setLoading(false)
+      if (!isSilent) setLoading(false)
     }
   }
 
@@ -77,6 +79,11 @@ export const DeliveryPage: React.FC = () => {
 
   useEffect(() => {
     loadDeliveryOrders()
+    const onSync = () => {
+      loadDeliveryOrders(true)
+    }
+    window.addEventListener('hitune:data-synced', onSync)
+    return () => window.removeEventListener('hitune:data-synced', onSync)
   }, [])
 
   const handleConfirmDelivery = async (e: React.FormEvent) => {
@@ -138,7 +145,11 @@ export const DeliveryPage: React.FC = () => {
             {readyOrders.map((ord) => (
               <div
                 key={ord.id}
-                className="p-5 rounded-3xl bg-slate-900/90 border border-teal-500/40 shadow-xl space-y-3 flex flex-col justify-between"
+                className={`p-5 rounded-3xl bg-slate-900/90 border shadow-xl space-y-3 flex flex-col justify-between transition ${
+                  targetOrderId === ord.id
+                    ? 'border-teal-400 ring-2 ring-teal-400/50'
+                    : 'border-teal-500/40'
+                }`}
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">

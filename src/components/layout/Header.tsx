@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Menu,
@@ -45,6 +45,19 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')
+  const actionsMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
+        setShowNotifMenu(false)
+        setShowRoleMenu(false)
+        setShowUserMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const handleCloudSync = async () => {
     setSyncing(true)
@@ -73,7 +86,16 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
   useEffect(() => {
     loadNotifications()
     const timer = setInterval(loadNotifications, 5000)
-    return () => clearInterval(timer)
+    const handleRefresh = () => {
+      loadNotifications()
+    }
+    window.addEventListener('hitune:notifications-updated', handleRefresh)
+    window.addEventListener('hitune:data-synced', handleRefresh)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('hitune:notifications-updated', handleRefresh)
+      window.removeEventListener('hitune:data-synced', handleRefresh)
+    }
   }, [user, currentRole])
 
   const unreadCount = notifications.filter((n) => !n.is_read).length
@@ -197,7 +219,7 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
       )}
 
       {/* Right: Actions, Notifications, Role Switcher, Profile */}
-      <div className="flex items-center gap-1.5 sm:gap-2.5">
+      <div ref={actionsMenuRef} className="flex items-center gap-1.5 sm:gap-2.5">
         {/* Quick Add Order Button - visible on mobile as icon, with label on sm */}
         {hasRole(['SUPER_ADMIN', 'ORDER_MANAGER']) && (
           <Link
@@ -295,9 +317,11 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
         <div className="relative">
           <button
             onClick={() => {
-              setShowNotifMenu(!showNotifMenu)
+              const next = !showNotifMenu
+              setShowNotifMenu(next)
               setShowRoleMenu(false)
               setShowUserMenu(false)
+              if (next) loadNotifications()
             }}
             className="relative p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
             title="বিজ্ঞপ্তি"
@@ -377,11 +401,11 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
                             {n.title}
                           </span>
                           {!n.is_read ? (
-                            <span className="px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300 text-[9px] font-bold shrink-0">
+                            <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[9px] font-bold shrink-0">
                               নতুন
                             </span>
                           ) : (
-                            <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400/90 text-[9px] font-semibold shrink-0">
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400/90 text-[9px] font-semibold shrink-0">
                               পঠিত
                             </span>
                           )}

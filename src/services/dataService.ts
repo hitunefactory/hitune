@@ -643,6 +643,7 @@ class DataService {
     }
 
     await this.addComment(orderId, staffId, `[অডিও দায়িত্ব গ্রহণ]: ${staffMember?.bengali_name || 'অডিও ডিজাইনার'} কাজের দায়িত্ব নিয়েছেন এবং কাজ শুরু করেছেন।`)
+    await this.markOrderNotificationsAsRead(orderId, this.orders[idx].order_number, '/audio')
     return this.orders[idx]
   }
 
@@ -681,6 +682,7 @@ class DataService {
     }
 
     await this.addComment(orderId, staffId, `[ভিডিও দায়িত্ব গ্রহণ]: ${staffMember?.bengali_name || 'ভিডিও এডিটর'} ভিডিও কাজের দায়িত্ব নিয়েছেন।`)
+    await this.markOrderNotificationsAsRead(orderId, this.orders[idx].order_number, '/video')
     return this.orders[idx]
   }
 
@@ -796,7 +798,9 @@ class DataService {
 
     const removedNotifIds: string[] = []
     this.notifications = this.notifications.filter((n) => {
-      if (n.link && n.link.includes(orderId)) {
+      const matchesId = Boolean(n.link && n.link.includes(orderId))
+      const matchesOrderNum = Boolean(orderToDelete.order_number && n.message?.includes(orderToDelete.order_number))
+      if (matchesId || matchesOrderNum) {
         removedNotifIds.push(n.id)
         return false
       }
@@ -806,7 +810,8 @@ class DataService {
       saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
       const dismissed = new Set(loadLocal<string[]>(STORAGE_KEYS.NOTIF_DISMISSED, []))
       removedNotifIds.forEach((rid) => dismissed.add(rid))
-      saveLocal(STORAGE_KEYS.NOTIF_DISMISSED, Array.from(dismissed))
+      saveLocal(STORAGE_KEYS.NOTIF_DISMISSED, Array.from(dismissed).slice(-500))
+      this.emitNotificationsUpdated()
     }
 
     if (await this.checkLiveSupport()) {
@@ -820,11 +825,15 @@ class DataService {
             supabase.from('order_comments').delete().eq('order_id', targetId),
             supabase.from('task_submissions').delete().eq('order_id', targetId),
             supabase.from('revisions').delete().eq('order_id', targetId),
+            supabase.from('notifications').delete().ilike('link', `%${targetId}%`),
           ])
           // Delete the main order
           await supabase.from('orders').delete().eq('id', targetId)
         } else if (orderToDelete.order_number) {
-          await supabase.from('orders').delete().eq('order_number', orderToDelete.order_number)
+          await Promise.allSettled([
+            supabase.from('notifications').delete().ilike('message', `%${orderToDelete.order_number}%`),
+            supabase.from('orders').delete().eq('order_number', orderToDelete.order_number),
+          ])
         }
       } catch (err) {
         console.warn('Supabase deleteOrder failed:', err)
@@ -1139,28 +1148,10 @@ class DataService {
     )
 
     // Automatically mark ready-for-delivery notifications for this order as read
-    const todayStr = getLocalDateString(new Date())
-    const readDayMap = loadLocal<Record<string, string>>(STORAGE_KEYS.NOTIF_READ_DAY, {})
-    const deliveredUuidIds: string[] = []
-    let notifChanged = false
-    this.notifications.forEach((n) => {
-      if (n.link && n.link.includes(orderId) && !n.is_read) {
-        n.is_read = true
-        readDayMap[n.id] = todayStr
-        if (isUuid(n.id)) deliveredUuidIds.push(n.id)
-        notifChanged = true
-      }
-    })
-    if (notifChanged) {
-      saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
-      saveLocal(STORAGE_KEYS.NOTIF_READ_DAY, readDayMap)
-    }
+    await this.markOrderNotificationsAsRead(orderId, updated.order_number, '/delivery')
 
     if (await this.checkLiveSupport()) {
       try {
-        if (deliveredUuidIds.length > 0) {
-          await supabase.from('notifications').update({ is_read: true }).in('id', deliveredUuidIds)
-        }
         const ord = await this.getOrderById(orderId)
         const targetId = isUuid(orderId) ? orderId : ord?.id
         if (targetId && isUuid(targetId)) {
@@ -1518,6 +1509,60 @@ class DataService {
   // -------------------------------------------------------------
   // NOTIFICATIONS
   // -------------------------------------------------------------
+  private emitNotificationsUpdated(): void {
+    try {
+      window.dispatchEvent(new CustomEvent('hitune:notifications-updated'))
+    } catch {}
+  }
+
+  /** Marks unread notifications tied to a given order (and optional route prefix) as read. */
+  private async markOrderNotificationsAsRead(
+    orderId: string,
+    orderNumber?: string,
+    linkPrefix?: string
+  ): Promise<void> {
+    const todayStr = getLocalDateString(new Date())
+    const readDayMap = loadLocal<Record<string, string>>(STORAGE_KEYS.NOTIF_READ_DAY, {})
+    const matchedUuids: string[] = []
+    let changed = false
+
+    this.notifications.forEach((n) => {
+      if (n.is_read) return
+      const matchesLink = Boolean(n.link && n.link.includes(orderId) && (!linkPrefix || n.link.startsWith(linkPrefix)))
+      const matchesOrderNum = Boolean(orderNumber && n.message?.includes(orderNumber) && (!linkPrefix || (n.link || '').startsWith(linkPrefix)))
+      if (matchesLink || matchesOrderNum) {
+        n.is_read = true
+        readDayMap[n.id] = todayStr
+        if (isUuid(n.id)) matchedUuids.push(n.id)
+        changed = true
+      }
+    })
+
+    if (changed) {
+      saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
+      saveLocal(STORAGE_KEYS.NOTIF_READ_DAY, readDayMap)
+      this.emitNotificationsUpdated()
+    }
+
+    if (await this.checkLiveSupport()) {
+      try {
+        if (matchedUuids.length > 0) {
+          await supabase.from('notifications').update({ is_read: true }).in('id', matchedUuids)
+        } else if (isUuid(orderId)) {
+          const linkPattern = linkPrefix ? `${linkPrefix}?orderId=${orderId}` : `%${orderId}%`
+          const query = supabase.from('notifications').update({ is_read: true }).eq('is_read', false)
+          if (linkPrefix) {
+            await query.eq('link', linkPattern)
+          } else {
+            await query.ilike('link', linkPattern)
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase markOrderNotificationsAsRead failed:', err)
+      }
+    }
+  }
+
   private cleanupExpiredNotifications(list: NotificationItem[]): {
     cleaned: NotificationItem[]
     expiredUuids: string[]
@@ -1574,17 +1619,28 @@ class DataService {
       try {
         let q = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(50)
         if (userId && isUuid(userId)) {
-          q = q.or(`user_id.eq.${userId},user_id.eq.all`)
+          // user_id is a UUID column in Supabase; querying 'all' causes PostgreSQL error 22P02
+          q = q.eq('user_id', userId)
         }
         const { data, error } = await q
         if (!error && data) {
           const liveList = data as NotificationItem[]
           const liveIds = new Set(liveList.map((n) => n.id))
           const liveSignatures = new Set(liveList.map((n) => `${n.user_id}|${n.title}|${n.message}`))
-          const localOnly = this.notifications.filter(
-            (n) => !liveIds.has(n.id) && !liveSignatures.has(`${n.user_id}|${n.title}|${n.message}`)
-          )
+          const canTrustExhaustiveLive = liveList.length < 50
+          const localOnly = this.notifications.filter((n) => {
+            if (liveIds.has(n.id) || liveSignatures.has(`${n.user_id}|${n.title}|${n.message}`)) {
+              return false
+            }
+            // If Supabase returned fewer than the 50-row cap cleanly, drop stale cloud UUIDs deleted on other devices
+            if (canTrustExhaustiveLive && isUuid(n.id) && (!userId || n.user_id === userId)) {
+              return false
+            }
+            return true
+          })
           merged = [...liveList, ...localOnly]
+        } else if (error) {
+          console.warn('Supabase getNotifications query warning:', error.message)
         }
       } catch (err) {
         console.warn('Supabase getNotifications error:', err)
@@ -1677,6 +1733,7 @@ class DataService {
       })
       saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
       saveLocal(STORAGE_KEYS.NOTIF_READ_DAY, readDayMap)
+      this.emitNotificationsUpdated()
     }
 
     if (await this.checkLiveSupport()) {
@@ -1699,6 +1756,7 @@ class DataService {
       delete readDayMap[notif.id]
       saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
       saveLocal(STORAGE_KEYS.NOTIF_READ_DAY, readDayMap)
+      this.emitNotificationsUpdated()
     }
 
     if (await this.checkLiveSupport() && isUuid(id)) {
@@ -1717,6 +1775,7 @@ class DataService {
     const dismissed = new Set(loadLocal<string[]>(STORAGE_KEYS.NOTIF_DISMISSED, []))
     dismissed.add(id)
     saveLocal(STORAGE_KEYS.NOTIF_DISMISSED, Array.from(dismissed).slice(-500))
+    this.emitNotificationsUpdated()
 
     if (await this.checkLiveSupport() && isUuid(id)) {
       try {
@@ -1738,6 +1797,7 @@ class DataService {
       return true
     })
     saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
+    this.emitNotificationsUpdated()
 
     if (toRemoveIds.length > 0) {
       const dismissed = new Set(loadLocal<string[]>(STORAGE_KEYS.NOTIF_DISMISSED, []))
@@ -1766,6 +1826,7 @@ class DataService {
     })
     saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
     saveLocal(STORAGE_KEYS.NOTIF_READ_DAY, readDayMap)
+    this.emitNotificationsUpdated()
 
     if (await this.checkLiveSupport() && isUuid(userId)) {
       try {
@@ -1797,6 +1858,7 @@ class DataService {
     }
     this.notifications.unshift(notif)
     saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
+    this.emitNotificationsUpdated()
 
     if (isSupabaseConfigured && isUuid(item.user_id)) {
       Promise.resolve(
