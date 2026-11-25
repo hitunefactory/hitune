@@ -408,7 +408,7 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
         </button>
 
         {/* Notifications Bell */}
-        <div className="relative">
+        <div className="sm:relative">
           <button
             onClick={() => {
               const next = !showNotifMenu
@@ -429,8 +429,8 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
           </button>
 
           {showNotifMenu && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 max-w-[calc(100vw-1.5rem)] bg-[#0f172a] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50">
-              <div className="p-3 border-b border-slate-800/80 flex items-center justify-between gap-2 bg-slate-900/70">
+            <div className="absolute left-3 right-3 top-full mt-2 max-w-md ml-auto sm:left-auto sm:right-0 sm:w-96 sm:ml-0 sm:max-w-[calc(100vw-1.5rem)] max-h-[calc(100dvh-5.5rem)] flex flex-col bg-[#0f172a] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50">
+              <div className="p-3 border-b border-slate-800/80 flex items-center justify-between gap-2 bg-slate-900/70 shrink-0">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-white text-sm">বিজ্ঞপ্তি</span>
                   {unreadCount > 0 && (
@@ -461,7 +461,7 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
               </div>
 
               {/* Sound & Device Alert Controls */}
-              <div className="px-3 py-2 border-b border-slate-800/70 bg-slate-950/60 flex items-center justify-between gap-2 flex-wrap">
+              <div className="px-3 py-2 border-b border-slate-800/70 bg-slate-950/60 flex items-center justify-between gap-2 flex-wrap shrink-0">
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
@@ -515,7 +515,7 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
                 )}
               </div>
 
-              <div className="max-h-80 overflow-y-auto divide-y divide-slate-800/60">
+              <div className="min-h-0 flex-1 max-h-80 overflow-y-auto divide-y divide-slate-800/60">
                 {notifications.length === 0 ? (
                   <div className="p-8 text-center text-slate-400 text-xs">
                     কোনো বিজ্ঞপ্তি নেই
@@ -590,7 +590,7 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
               </div>
 
               {notifications.length > 0 && (
-                <div className="px-3 py-2 bg-slate-950/70 border-t border-slate-800/80 text-[10px] text-slate-500 text-center">
+                <div className="px-3 py-2 bg-slate-950/70 border-t border-slate-800/80 text-[10px] text-slate-500 text-center shrink-0">
                   পঠিত বিজ্ঞপ্তি রাত ১২টার পর স্বয়ংক্রিয়ভাবে মুছে যাবে (অপঠিতগুলো থাকবে)
                 </div>
               )}
