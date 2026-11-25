@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hitune-pwa-v1'
+const CACHE_NAME = 'hitune-pwa-v2'
 const PRECACHE_URLS = [
   '/manifest.webmanifest',
   '/icons/icon-192x192.png',
@@ -65,5 +65,27 @@ self.addEventListener('fetch', (event) => {
         return response
       })
       .catch(() => caches.match(request))
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const rawUrl = event.notification.data?.url || '/'
+  const targetUrl = new URL(rawUrl, self.location.origin).href
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.focus()
+          client.postMessage({ type: 'HITUNE_NAVIGATE', url: rawUrl })
+          return
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl)
+      }
+      return undefined
+    })
   )
 })

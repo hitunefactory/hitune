@@ -17,6 +17,9 @@ import {
   RotateCcw,
   User,
   RefreshCw,
+  Volume2,
+  VolumeX,
+  BellRing,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
@@ -24,6 +27,15 @@ import { dataService } from '../../services/dataService'
 import { NotificationItem, UserRole } from '../../types/database'
 import { ROLE_LABELS_BN } from '../../lib/constants'
 import { cn, formatBengaliNumber } from '../../lib/utils'
+import {
+  isNotificationSoundEnabled,
+  setNotificationSoundEnabled,
+  playNotificationChime,
+  getBrowserNotificationPermission,
+  requestBrowserNotificationPermission,
+  showNativeNotification,
+  BrowserNotificationPermission,
+} from '../../lib/notificationSound'
 import { UserAvatar } from '../ui/UserAvatar'
 import { ProfileModal } from '../profile/ProfileModal'
 import { InstallAppButton } from '../pwa/InstallAppButton'
@@ -46,7 +58,13 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => isNotificationSoundEnabled())
+  const [notifPermission, setNotifPermission] = useState<BrowserNotificationPermission>(() =>
+    getBrowserNotificationPermission()
+  )
   const actionsMenuRef = useRef<HTMLDivElement>(null)
+  const baselineKeyRef = useRef<string | null>(null)
+  const seenNotifKeysRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -80,8 +98,36 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
 
   const loadNotifications = async () => {
     if (!user) return
+    const sessionKey = `${user.id}:${currentRole}`
     const list = await dataService.getNotifications(user.id, currentRole)
     setNotifications(list)
+
+    if (baselineKeyRef.current !== sessionKey) {
+      seenNotifKeysRef.current = new Set()
+      list.forEach((n) => {
+        seenNotifKeysRef.current.add(n.id)
+        seenNotifKeysRef.current.add(`${n.title}|${n.message}`)
+      })
+      baselineKeyRef.current = sessionKey
+      return
+    }
+
+    const freshUnread = list.filter(
+      (n) =>
+        !n.is_read &&
+        !seenNotifKeysRef.current.has(n.id) &&
+        !seenNotifKeysRef.current.has(`${n.title}|${n.message}`)
+    )
+
+    list.forEach((n) => {
+      seenNotifKeysRef.current.add(n.id)
+      seenNotifKeysRef.current.add(`${n.title}|${n.message}`)
+    })
+
+    if (freshUnread.length > 0) {
+      playNotificationChime({ vibrate: true })
+      showNativeNotification(freshUnread[0])
+    }
   }
 
   useEffect(() => {
@@ -90,14 +136,59 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
     const handleRefresh = () => {
       loadNotifications()
     }
+    const handleCustomNavigate = (e: Event) => {
+      const targetUrl = (e as CustomEvent<{ url?: string }>).detail?.url
+      if (targetUrl) navigate(targetUrl)
+    }
+    const handleSwMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'HITUNE_NAVIGATE' && event.data?.url) {
+        navigate(event.data.url)
+      }
+    }
+
     window.addEventListener('hitune:notifications-updated', handleRefresh)
     window.addEventListener('hitune:data-synced', handleRefresh)
+    window.addEventListener('hitune:navigate', handleCustomNavigate)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleSwMessage)
+    }
+
     return () => {
       clearInterval(timer)
       window.removeEventListener('hitune:notifications-updated', handleRefresh)
       window.removeEventListener('hitune:data-synced', handleRefresh)
+      window.removeEventListener('hitune:navigate', handleCustomNavigate)
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', handleSwMessage)
+      }
     }
   }, [user, currentRole])
+
+  const handleToggleSound = async () => {
+    const next = !soundEnabled
+    setSoundEnabled(next)
+    setNotificationSoundEnabled(next)
+    if (next) {
+      await playNotificationChime({ force: true, vibrate: false })
+    }
+  }
+
+  const handleEnableDeviceAlerts = async () => {
+    const perm = await requestBrowserNotificationPermission()
+    setNotifPermission(perm)
+    await playNotificationChime({ force: true, vibrate: false })
+    if (perm === 'granted') {
+      await showNativeNotification(
+        {
+          id: `test-${Date.now()}`,
+          title: 'HI TUNE STUDIO',
+          message: 'নোটিফিকেশন সাউন্ড ও অ্যালার্ট সক্রিয় হয়েছে!',
+          link: '/',
+        },
+        { force: true }
+      )
+    }
+  }
 
   const unreadCount = notifications.filter((n) => !n.is_read).length
   const readCount = notifications.filter((n) => n.is_read).length
@@ -367,6 +458,61 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
                     </button>
                   )}
                 </div>
+              </div>
+
+              {/* Sound & Device Alert Controls */}
+              <div className="px-3 py-2 border-b border-slate-800/70 bg-slate-950/60 flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleToggleSound}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition cursor-pointer',
+                      soundEnabled
+                        ? 'bg-blue-500/15 border-blue-500/30 text-blue-300 hover:bg-blue-500/25'
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                    )}
+                    title={soundEnabled ? 'সাউন্ড বন্ধ করুন' : 'সাউন্ড চালু করুন'}
+                  >
+                    {soundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+                    <span>{soundEnabled ? 'সাউন্ড চালু' : 'মিউট'}</span>
+                  </button>
+
+                  {soundEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => playNotificationChime({ force: true, vibrate: true })}
+                      className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[10px] text-slate-300 font-medium cursor-pointer transition"
+                      title="নোটিফিকেশন সাউন্ড টেস্ট করুন"
+                    >
+                      টেস্ট
+                    </button>
+                  )}
+                </div>
+
+                {notifPermission === 'default' && (
+                  <button
+                    type="button"
+                    onClick={handleEnableDeviceAlerts}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-[11px] font-semibold cursor-pointer transition"
+                  >
+                    <BellRing className="h-3 w-3" />
+                    <span>অ্যালার্ট চালু</span>
+                  </button>
+                )}
+
+                {notifPermission === 'granted' && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
+                    <BellRing className="h-3 w-3" />
+                    <span>পিসি/ফোন অ্যালার্ট চালু</span>
+                  </span>
+                )}
+
+                {notifPermission === 'denied' && (
+                  <span className="text-[10px] text-amber-400/90 font-medium">
+                    ব্রাউজার অ্যালার্ট ব্লক করা
+                  </span>
+                )}
               </div>
 
               <div className="max-h-80 overflow-y-auto divide-y divide-slate-800/60">
