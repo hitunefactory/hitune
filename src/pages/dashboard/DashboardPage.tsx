@@ -389,14 +389,16 @@ export const DashboardPage: React.FC = () => {
             <div className="block sm:hidden divide-y divide-slate-800/80">
               {filteredOrders.map((ord) => (
                 <div key={ord.id} className="p-4 space-y-3 hover:bg-slate-800/30 transition">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold text-white text-sm">{ord.order_number}</span>
-                    <StatusBadge status={ord.overall_status} />
-                  </div>
-
-                  <div>
-                    <div className="font-semibold text-white text-sm leading-snug">{ord.title}</div>
-                    <div className="text-xs text-blue-400 mt-0.5">{ord.category?.name_bn || 'কাস্টম'}</div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-white text-sm leading-snug">{ord.title}</div>
+                      <div className="text-xs text-blue-400 mt-0.5">
+                        {ord.category?.name_bn || 'কাস্টম'} • <span className="font-mono text-slate-300">{ord.order_number}</span>
+                      </div>
+                    </div>
+                    <div className="shrink-0">
+                      <StatusBadge status={ord.overall_status} />
+                    </div>
                   </div>
 
                   <div className="flex items-start justify-between text-xs text-slate-300 pt-1">
@@ -443,22 +445,19 @@ export const DashboardPage: React.FC = () => {
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#0b1120]/70 text-slate-400 border-b border-slate-800/80">
                   <tr>
-                    <th className="py-3 px-4 font-semibold">অর্ডার নং</th>
-                    <th className="py-3 px-4 font-semibold">কাজের শিরোনাম ও ক্যাটাগরি</th>
-                    <th className="py-3 px-4 font-semibold">ক্লায়েন্ট ও ফোন</th>
-                    <th className="py-3 px-4 font-semibold">ডেডলাইন</th>
-                    <th className="py-3 px-4 font-semibold">প্রোডাকশন স্থিতি</th>
-                    <th className="py-3 px-4 font-semibold text-right">মোট / বকেয়া</th>
-                    <th className="py-3 px-4 font-semibold text-center">অ্যাকশন</th>
+                    <th className="py-3 px-4 font-semibold whitespace-nowrap">কাজের শিরোনাম</th>
+                    <th className="py-3 px-4 font-semibold whitespace-nowrap">ক্লায়েন্ট</th>
+                    <th className="py-3 px-4 font-semibold whitespace-nowrap">স্ট্যাটাস</th>
+                    <th className="py-3 px-4 font-semibold whitespace-nowrap">অর্ডার নং</th>
+                    <th className="py-3 px-4 font-semibold text-right whitespace-nowrap">মোট / বকেয়া</th>
+                    <th className="py-3 px-4 font-semibold whitespace-nowrap">ডেডলাইন</th>
+                    <th className="py-3 px-4 font-semibold text-center whitespace-nowrap">অ্যাকশন</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 text-slate-300">
                   {filteredOrders.map((ord) => (
                     <tr key={ord.id} className="hover:bg-slate-800/40 transition">
-                      <td className="py-3.5 px-4 font-bold text-white whitespace-nowrap">
-                        {ord.order_number}
-                      </td>
-                      <td className="py-3.5 px-4 max-w-xs truncate">
+                      <td className="py-3.5 px-4 max-w-[200px] truncate" title={ord.title}>
                         <div className="font-medium text-slate-100 truncate">{ord.title}</div>
                         <div className="text-[11px] text-blue-400/90 truncate">{ord.category?.name_bn || 'কাস্টম'}</div>
                       </td>
@@ -476,11 +475,11 @@ export const DashboardPage: React.FC = () => {
                           </a>
                         )}
                       </td>
-                      <td className="py-3.5 px-4 whitespace-nowrap text-slate-400">
-                        {formatBengaliDate(ord.deadline)}
-                      </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <StatusBadge status={ord.overall_status} />
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-white whitespace-nowrap">
+                        {ord.order_number}
                       </td>
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="font-semibold text-slate-200">{formatCurrency(ord.total_amount)}</div>
@@ -489,6 +488,9 @@ export const DashboardPage: React.FC = () => {
                         ) : (
                           <div className="text-[11px] text-emerald-400">পরিশোধিত</div>
                         )}
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap text-slate-400">
+                        {formatBengaliDate(ord.deadline)}
                       </td>
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
                         <Link

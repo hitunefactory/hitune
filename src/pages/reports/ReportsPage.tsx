@@ -140,23 +140,23 @@ export const ReportsPage: React.FC = () => {
             <table className="w-full text-left text-xs">
               <thead className="bg-[#0b1120] text-slate-400 border-b border-slate-800 print:bg-gray-100 print:text-black">
                 <tr>
-                  <th className="py-2.5 px-3">অর্ডার নং</th>
-                  <th className="py-2.5 px-3">শিরোনাম</th>
-                  <th className="py-2.5 px-3">ক্লায়েন্ট</th>
-                  <th className="py-2.5 px-3">ক্যাটাগরি</th>
-                  <th className="py-2.5 px-3">স্ট্যাটাস</th>
-                  <th className="py-2.5 px-3 text-right">মূল্য</th>
-                  <th className="py-2.5 px-3 text-right">বকেয়া</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">কাজের শিরোনাম</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">ক্লায়েন্ট</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">স্ট্যাটাস</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">অর্ডার নং</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">ক্যাটাগরি</th>
+                  <th className="py-2.5 px-3 text-right whitespace-nowrap">মূল্য</th>
+                  <th className="py-2.5 px-3 text-right whitespace-nowrap">বকেয়া</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-slate-300 print:divide-gray-300 print:text-black">
                 {orders.map((o) => (
                   <tr key={o.id}>
-                    <td className="py-2 px-3 font-semibold">{o.order_number}</td>
-                    <td className="py-2 px-3">{o.title}</td>
+                    <td className="py-2 px-3 font-medium">{o.title}</td>
                     <td className="py-2 px-3">{o.client_name} ({o.client_phone})</td>
-                    <td className="py-2 px-3">{o.category?.name_bn}</td>
                     <td className="py-2 px-3">{o.overall_status}</td>
+                    <td className="py-2 px-3 font-semibold">{o.order_number}</td>
+                    <td className="py-2 px-3">{o.category?.name_bn}</td>
                     <td className="py-2 px-3 text-right font-medium">{formatCurrency(o.total_amount)}</td>
                     <td className="py-2 px-3 text-right font-medium text-amber-400 print:text-black">{formatCurrency(o.due_amount)}</td>
                   </tr>

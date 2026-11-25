@@ -238,14 +238,16 @@ export const OrdersListPage: React.FC = () => {
             <div className="block sm:hidden divide-y divide-slate-800/80">
               {filteredOrders.map((ord) => (
                 <div key={ord.id} className="p-4 space-y-3 hover:bg-slate-800/30 transition">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold text-white text-sm">{ord.order_number}</span>
-                    <StatusBadge status={ord.overall_status} />
-                  </div>
-
-                  <div>
-                    <div className="font-semibold text-white text-sm leading-snug">{ord.title}</div>
-                    <div className="text-xs text-blue-400 mt-0.5">{ord.category?.name_bn || 'কাস্টম'}</div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-white text-sm leading-snug">{ord.title}</div>
+                      <div className="text-xs text-blue-400 mt-0.5">
+                        {ord.category?.name_bn || 'কাস্টম'} • <span className="font-mono text-slate-300">{ord.order_number}</span>
+                      </div>
+                    </div>
+                    <div className="shrink-0">
+                      <StatusBadge status={ord.overall_status} />
+                    </div>
                   </div>
 
                   <div className="flex items-start justify-between text-xs text-slate-300 pt-1">
@@ -318,23 +320,20 @@ export const OrdersListPage: React.FC = () => {
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#0b1120]/80 text-slate-400 border-b border-slate-800">
                   <tr>
-                    <th className="py-3.5 px-4 font-semibold">অর্ডার নম্বর</th>
-                    <th className="py-3.5 px-4 font-semibold">কাজের বিবরণ ও ক্যাটাগরি</th>
-                    <th className="py-3.5 px-4 font-semibold">ক্লায়েন্ট ও যোগাযোগ</th>
-                    <th className="py-3.5 px-4 font-semibold">বিভাগ</th>
-                    <th className="py-3.5 px-4 font-semibold">ডেডলাইন</th>
-                    <th className="py-3.5 px-4 font-semibold">স্ট্যাটাস</th>
-                    <th className="py-3.5 px-4 font-semibold text-right">মূল্য / বকেয়া</th>
-                    <th className="py-3.5 px-4 font-semibold text-center">অ্যাকশন</th>
+                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap">কাজের শিরোনাম</th>
+                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap">ক্লায়েন্ট</th>
+                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap">স্ট্যাটাস</th>
+                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap">অর্ডার নং</th>
+                    <th className="py-3.5 px-4 font-semibold text-right whitespace-nowrap">মূল্য / বকেয়া</th>
+                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap">বিভাগ</th>
+                    <th className="py-3.5 px-4 font-semibold whitespace-nowrap">ডেডলাইন</th>
+                    <th className="py-3.5 px-4 font-semibold text-center whitespace-nowrap">অ্যাকশন</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 text-slate-300">
                   {filteredOrders.map((ord) => (
                     <tr key={ord.id} className="hover:bg-slate-800/40 transition">
-                      <td className="py-3.5 px-4 font-bold text-white whitespace-nowrap">
-                        {ord.order_number}
-                      </td>
-                      <td className="py-3.5 px-4 max-w-xs">
+                      <td className="py-3.5 px-4 max-w-[200px] truncate" title={ord.title}>
                         <div className="font-semibold text-slate-100 truncate">{ord.title}</div>
                         <div className="text-[11px] text-blue-400/90 truncate">
                           {ord.category?.name_bn || 'কাস্টম'}
@@ -343,6 +342,24 @@ export const OrdersListPage: React.FC = () => {
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <div className="font-medium text-slate-200">{ord.client_name}</div>
                         <div className="text-[11px] text-slate-400">{ord.client_phone}</div>
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <StatusBadge status={ord.overall_status} />
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-white whitespace-nowrap">
+                        {ord.order_number}
+                      </td>
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <div className="font-semibold text-slate-200">
+                          {formatCurrency(ord.total_amount)}
+                        </div>
+                        {ord.due_amount > 0 ? (
+                          <div className="text-[11px] text-amber-400">
+                            বকেয়া: {formatCurrency(ord.due_amount)}
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-emerald-400">পরিশোধিত</div>
+                        )}
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-1.5 text-[11px]">
@@ -360,21 +377,6 @@ export const OrdersListPage: React.FC = () => {
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap text-slate-400">
                         {formatBengaliDate(ord.deadline)}
-                      </td>
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <StatusBadge status={ord.overall_status} />
-                      </td>
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <div className="font-semibold text-slate-200">
-                          {formatCurrency(ord.total_amount)}
-                        </div>
-                        {ord.due_amount > 0 ? (
-                          <div className="text-[11px] text-amber-400">
-                            বকেয়া: {formatCurrency(ord.due_amount)}
-                          </div>
-                        ) : (
-                          <div className="text-[11px] text-emerald-400">পরিশোধিত</div>
-                        )}
                       </td>
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1.5">

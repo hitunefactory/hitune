@@ -152,13 +152,17 @@ export const DeliveryPage: React.FC = () => {
                 }`}
               >
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-white text-sm">{ord.order_number}</span>
-                    <StatusBadge status={ord.overall_status} />
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-slate-100 text-sm leading-snug">{ord.title}</h3>
+                      <div className="text-xs text-slate-400 mt-0.5">
+                        {ord.category?.name_bn} • <span className="font-mono text-slate-300">{ord.order_number}</span>
+                      </div>
+                    </div>
+                    <div className="shrink-0">
+                      <StatusBadge status={ord.overall_status} />
+                    </div>
                   </div>
-
-                  <h3 className="font-semibold text-slate-100 text-sm">{ord.title}</h3>
-                  <div className="text-xs text-slate-400">{ord.category?.name_bn}</div>
 
                   <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800/80 space-y-1 text-xs">
                     <div className="flex items-center justify-between">
@@ -237,21 +241,21 @@ export const DeliveryPage: React.FC = () => {
             <table className="w-full text-left text-xs">
               <thead className="bg-[#0b1120]/80 text-slate-400 border-b border-slate-800">
                 <tr>
-                  <th className="py-3 px-4 font-semibold">অর্ডার নং</th>
-                  <th className="py-3 px-4 font-semibold">কাজের শিরোনাম</th>
-                  <th className="py-3 px-4 font-semibold">ক্লায়েন্টের নাম ও ফোন</th>
-                  <th className="py-3 px-4 font-semibold">পেমেন্ট অবস্থা</th>
-                  <th className="py-3 px-4 font-semibold">স্ট্যাটাস</th>
-                  <th className="py-3 px-4 font-semibold text-center">অ্যাকশন</th>
+                  <th className="py-3 px-4 font-semibold whitespace-nowrap">কাজের শিরোনাম</th>
+                  <th className="py-3 px-4 font-semibold whitespace-nowrap">ক্লায়েন্ট</th>
+                  <th className="py-3 px-4 font-semibold whitespace-nowrap">স্ট্যাটাস</th>
+                  <th className="py-3 px-4 font-semibold whitespace-nowrap">অর্ডার নং</th>
+                  <th className="py-3 px-4 font-semibold whitespace-nowrap">পেমেন্ট অবস্থা</th>
+                  <th className="py-3 px-4 font-semibold text-center whitespace-nowrap">অ্যাকশন</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-slate-300">
                 {completedOrders.map((ord) => (
                   <tr key={ord.id} className="hover:bg-slate-800/40 transition">
-                    <td className="py-3 px-4 font-bold text-white whitespace-nowrap">
-                      {ord.order_number}
-                    </td>
-                    <td className="py-3 px-4 font-medium text-slate-100 max-w-xs truncate">
+                    <td
+                      className="py-3 px-4 font-medium text-slate-100 max-w-[200px] truncate"
+                      title={ord.title}
+                    >
                       {ord.title}
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
@@ -259,10 +263,13 @@ export const DeliveryPage: React.FC = () => {
                       <div className="text-[11px] text-slate-400">{ord.client_phone}</div>
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
-                      <PaymentBadge status={ord.payment_status} />
+                      <StatusBadge status={ord.overall_status} />
+                    </td>
+                    <td className="py-3 px-4 font-bold text-white whitespace-nowrap text-xs">
+                      {ord.order_number}
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
-                      <StatusBadge status={ord.overall_status} />
+                      <PaymentBadge status={ord.payment_status} />
                     </td>
                     <td className="py-3 px-4 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1.5">
