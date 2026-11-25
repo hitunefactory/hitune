@@ -20,6 +20,7 @@ import {
 import { checkSupabaseHealth, isSupabaseConfigured, SupabaseHealth } from '../../integrations/supabase/client'
 import { dataService } from '../../services/dataService'
 import { OrderCategory, DynamicFormType } from '../../types/database'
+import { useBackOverlay } from '../../hooks/useBackOverlay'
 
 export const SettingsPage: React.FC = () => {
   const [health, setHealth] = useState<SupabaseHealth | null>(null)
@@ -34,6 +35,8 @@ export const SettingsPage: React.FC = () => {
   const [catNameBn, setCatNameBn] = useState('')
   const [catFormType, setCatFormType] = useState<DynamicFormType>('GENERAL')
   const [savingCat, setSavingCat] = useState(false)
+
+  useBackOverlay(showCatModal && !savingCat, () => setShowCatModal(false))
 
   const loadCategories = async () => {
     try {

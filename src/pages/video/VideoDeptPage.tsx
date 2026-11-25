@@ -19,6 +19,7 @@ import { Order } from '../../types/database'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatBengaliDate, formatBengaliNumber } from '../../lib/utils'
+import { useBackOverlay } from '../../hooks/useBackOverlay'
 
 export const VideoDeptPage: React.FC = () => {
   const { user, currentRole } = useAuth()
@@ -35,6 +36,8 @@ export const VideoDeptPage: React.FC = () => {
   const [confirmOrder, setConfirmOrder] = useState<Order | null>(null)
   const [completing, setCompleting] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+
+  useBackOverlay(Boolean(confirmOrder) && !completing, () => setConfirmOrder(null))
 
   const loadVideoOrders = async (isSilent = false) => {
     if (!isSilent) setLoading(true)

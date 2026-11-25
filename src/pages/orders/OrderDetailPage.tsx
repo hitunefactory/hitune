@@ -36,6 +36,7 @@ import { formatBengaliNumber, formatBengaliDate, formatCurrency } from '../../li
 import { STATUS_MAP_BN, PAYMENT_METHOD_MAP_BN } from '../../lib/constants'
 import { InvoiceModal } from '../../components/orders/InvoiceModal'
 import { EditOrderModal } from '../../components/orders/EditOrderModal'
+import { useBackOverlay } from '../../hooks/useBackOverlay'
 
 export const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -73,6 +74,19 @@ export const OrderDetailPage: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  useBackOverlay(showPaymentModal, () => setShowPaymentModal(false))
+  useBackOverlay(showDeliveryModal, () => setShowDeliveryModal(false))
+  useBackOverlay(showDeleteModal && !deleting, () => setShowDeleteModal(false))
+
+  const handleSmartBack = () => {
+    const idx = typeof window !== 'undefined' ? window.history.state?.idx : 0
+    if (typeof idx === 'number' && idx > 0) {
+      navigate(-1)
+    } else {
+      navigate('/orders', { replace: true })
+    }
+  }
 
   const handleDeleteOrder = async () => {
     if (!order) return
@@ -256,8 +270,10 @@ export const OrderDetailPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate('/orders')}
-            className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition"
+            type="button"
+            onClick={handleSmartBack}
+            className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+            title="আগের পেজে ফিরে যান"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
@@ -944,7 +960,7 @@ export const OrderDetailPage: React.FC = () => {
       )}
 
       {/* Edit Order Modal */}
-      {order && (
+      {order && showEditModal && (
         <EditOrderModal
           isOpen={showEditModal}
           onClose={() => setShowEditModal(false)}

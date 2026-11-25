@@ -39,6 +39,7 @@ import {
 import { UserAvatar } from '../ui/UserAvatar'
 import { ProfileModal } from '../profile/ProfileModal'
 import { InstallAppButton } from '../pwa/InstallAppButton'
+import { useBackOverlay } from '../../hooks/useBackOverlay'
 
 interface HeaderProps {
   setMobileOpen: (open: boolean) => void
@@ -65,6 +66,11 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
   const actionsMenuRef = useRef<HTMLDivElement>(null)
   const baselineKeyRef = useRef<string | null>(null)
   const seenNotifKeysRef = useRef<Set<string>>(new Set())
+
+  useBackOverlay(showMobileSearch, () => setShowMobileSearch(false))
+  useBackOverlay(showNotifMenu, () => setShowNotifMenu(false))
+  useBackOverlay(showRoleMenu, () => setShowRoleMenu(false))
+  useBackOverlay(showUserMenu, () => setShowUserMenu(false))
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

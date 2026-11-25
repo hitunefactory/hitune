@@ -16,6 +16,7 @@ import { Order, TaskSubmission } from '../../types/database'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatBengaliDate, formatBengaliNumber } from '../../lib/utils'
+import { useBackOverlay } from '../../hooks/useBackOverlay'
 
 export const QualityControlPage: React.FC = () => {
   const { user } = useAuth()
@@ -27,6 +28,8 @@ export const QualityControlPage: React.FC = () => {
   const [targetDept, setTargetDept] = useState<'AUDIO' | 'VIDEO'>('AUDIO')
   const [revisionInstructions, setRevisionInstructions] = useState('')
   const [submittingRevision, setSubmittingRevision] = useState(false)
+
+  useBackOverlay(Boolean(selectedOrder) && !submittingRevision, () => setSelectedOrder(null))
 
   const loadQCQueue = async () => {
     setLoading(true)

@@ -4,6 +4,7 @@ import { X, Printer, Download, Sparkles, Building2, Phone, Mail, MapPin } from '
 import { Order } from '../../types/database'
 import { formatBengaliDate, formatBengaliNumber, formatCurrency } from '../../lib/utils'
 import { STATUS_MAP_BN } from '../../lib/constants'
+import { useBackOverlay } from '../../hooks/useBackOverlay'
 
 interface InvoiceModalProps {
   isOpen: boolean
@@ -12,6 +13,8 @@ interface InvoiceModalProps {
 }
 
 export const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, order }) => {
+  useBackOverlay(isOpen, onClose)
+
   if (!isOpen) return null
 
   const handlePrint = () => {

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import React, { useState, useEffect, useRef } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -21,7 +21,13 @@ type WorkFormat = 'AUDIO_ONLY' | 'AUDIO_VIDEO'
 
 export const CreateOrderPage: React.FC = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
+  const entryIdxRef = useRef<number>(
+    typeof window !== 'undefined' && typeof window.history.state?.idx === 'number'
+      ? window.history.state.idx
+      : 0
+  )
 
   const [categories, setCategories] = useState<OrderCategory[]>([])
   const [staffList, setStaffList] = useState<Profile[]>([])
@@ -29,8 +35,59 @@ export const CreateOrderPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  // Wizard Step: 1 = Category, 2 = Format, 3 = Price, 4 = Details & Confirm
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
+  // Wizard Step synced with browser history so mobile Back navigates 4 -> 3 -> 2 -> 1 cleanly
+  const locationStep = (location.state as { wizardStep?: number } | null)?.wizardStep
+  const step: 1 | 2 | 3 | 4 =
+    locationStep === 2 || locationStep === 3 || locationStep === 4 ? locationStep : 1
+  const stepRef = useRef(step)
+  const advanceTimerRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    stepRef.current = step
+  }, [step])
+
+  useEffect(() => {
+    return () => {
+      if (advanceTimerRef.current) {
+        window.clearTimeout(advanceTimerRef.current)
+      }
+    }
+  }, [])
+
+  const setStep = (nextStep: 1 | 2 | 3 | 4) => {
+    if (advanceTimerRef.current) {
+      window.clearTimeout(advanceTimerRef.current)
+      advanceTimerRef.current = null
+    }
+    const activeStep = stepRef.current
+    if (nextStep === activeStep) return
+    if (nextStep < activeStep && (window.history.state?.usr as { wizardStep?: number } | null)?.wizardStep) {
+      if (nextStep === activeStep - 1) {
+        navigate(-1)
+        return
+      }
+      navigate(location.pathname + location.search, {
+        state: { ...(location.state || {}), wizardStep: nextStep },
+        replace: true,
+      })
+      return
+    }
+    navigate(location.pathname + location.search, {
+      state: { ...(location.state || {}), wizardStep: nextStep },
+    })
+  }
+
+  const handleExitWizard = () => {
+    const currentIdx =
+      typeof window !== 'undefined' && typeof window.history.state?.idx === 'number'
+        ? window.history.state.idx
+        : 0
+    if (entryIdxRef.current > 0 && currentIdx >= entryIdxRef.current) {
+      navigate(entryIdxRef.current - currentIdx - 1)
+    } else {
+      navigate('/orders', { replace: true })
+    }
+  }
 
   // 1. Primary Order Type
   const [primaryType, setPrimaryType] = useState<PrimaryOrderType | null>(null)
@@ -107,7 +164,9 @@ export const CreateOrderPage: React.FC = () => {
       setWorkFormat('AUDIO_ONLY')
     }
     // Smoothly transition to Step 2
-    setTimeout(() => {
+    if (advanceTimerRef.current) window.clearTimeout(advanceTimerRef.current)
+    advanceTimerRef.current = window.setTimeout(() => {
+      advanceTimerRef.current = null
       setStep(2)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }, 180)
@@ -117,7 +176,9 @@ export const CreateOrderPage: React.FC = () => {
   const handleSelectFormat = (fmt: WorkFormat) => {
     setWorkFormat(fmt)
     setError('')
-    setTimeout(() => {
+    if (advanceTimerRef.current) window.clearTimeout(advanceTimerRef.current)
+    advanceTimerRef.current = window.setTimeout(() => {
+      advanceTimerRef.current = null
       setStep(3)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }, 180)
@@ -293,12 +354,14 @@ export const CreateOrderPage: React.FC = () => {
       {/* Top Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link
-            to="/orders"
-            className="p-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition"
+          <button
+            type="button"
+            onClick={handleExitWizard}
+            className="p-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+            title="ফিরে যান"
           >
             <ArrowLeft className="h-4 w-4" />
-          </Link>
+          </button>
           <div>
             <h1 className="text-lg sm:text-xl font-black text-white flex items-center gap-2">
               <span>নতুন অর্ডার গ্রহণ</span>

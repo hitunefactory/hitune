@@ -4,6 +4,7 @@ import { X, Save, Edit3, User, Phone, Calendar, DollarSign, Shield, AlertCircle 
 import { Order, Profile, OrderPriority } from '../../types/database'
 import { dataService } from '../../services/dataService'
 import { formatBengaliNumber, formatCurrency } from '../../lib/utils'
+import { useBackOverlay } from '../../hooks/useBackOverlay'
 
 interface EditOrderModalProps {
   isOpen: boolean
@@ -20,8 +21,6 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
   staffList,
   onOrderUpdated,
 }) => {
-  if (!isOpen) return null
-
   const [title, setTitle] = useState(order.title)
   const [clientName, setClientName] = useState(order.client_name)
   const [clientPhone, setClientPhone] = useState(order.client_phone)
@@ -39,6 +38,10 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  useBackOverlay(isOpen, onClose)
+
+  if (!isOpen) return null
 
   const dueAmount = Math.max(0, (Number(totalAmount) || 0) - (Number(paidAmount) || 0))
 

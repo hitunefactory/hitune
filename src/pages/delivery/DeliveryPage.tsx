@@ -19,6 +19,7 @@ import { StatusBadge, PaymentBadge } from '../../components/ui/StatusBadge'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatBengaliDate, formatBengaliNumber, formatCurrency } from '../../lib/utils'
 import { EditOrderModal } from '../../components/orders/EditOrderModal'
+import { useBackOverlay } from '../../hooks/useBackOverlay'
 
 export const DeliveryPage: React.FC = () => {
   const { user, hasRole } = useAuth()
@@ -41,6 +42,9 @@ export const DeliveryPage: React.FC = () => {
   const [recipientPhone, setRecipientPhone] = useState('')
   const [deliveryNotes, setDeliveryNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  useBackOverlay(Boolean(selectedOrder) && !submitting, () => setSelectedOrder(null))
+  useBackOverlay(Boolean(deletingOrder) && !deleting, () => setDeletingOrder(null))
 
   const loadDeliveryOrders = async (isSilent = false) => {
     if (!isSilent) setLoading(true)

@@ -12,6 +12,7 @@ import { dataService } from '../../services/dataService'
 import { Profile, UserRole } from '../../types/database'
 import { ROLE_LABELS_BN } from '../../lib/constants'
 import { UserAvatar } from '../../components/ui/UserAvatar'
+import { useBackOverlay } from '../../hooks/useBackOverlay'
 
 export const StaffPage: React.FC = () => {
   const [staffList, setStaffList] = useState<Profile[]>([])
@@ -25,6 +26,8 @@ export const StaffPage: React.FC = () => {
   const [phone, setPhone] = useState('')
   const [role, setRole] = useState<UserRole>('AUDIO_DESIGNER')
   const [department, setDepartment] = useState('AUDIO')
+
+  useBackOverlay(showModal, () => setShowModal(false))
 
   const loadStaff = async () => {
     setLoading(true)

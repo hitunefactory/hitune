@@ -1,6 +1,7 @@
 import React from 'react'
 import { Download, Smartphone, Share, PlusSquare, X } from 'lucide-react'
 import { usePwaInstall } from '../../hooks/usePwaInstall'
+import { useBackOverlay } from '../../hooks/useBackOverlay'
 import { cn } from '../../lib/utils'
 
 interface InstallAppButtonProps {
@@ -13,6 +14,8 @@ export const InstallAppButton: React.FC<InstallAppButtonProps> = ({
   onAction,
 }) => {
   const { canInstall, showIosGuide, setShowIosGuide, triggerInstall } = usePwaInstall()
+
+  useBackOverlay(showIosGuide, () => setShowIosGuide(false))
 
   if (!canInstall) return null
 

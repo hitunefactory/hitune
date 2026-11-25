@@ -20,6 +20,7 @@ import { STATUS_MAP_BN } from '../../lib/constants'
 import { formatBengaliNumber, formatBengaliDate, formatCurrency, getLocalDateString } from '../../lib/utils'
 import { useAuth } from '../../contexts/AuthContext'
 import { EditOrderModal } from '../../components/orders/EditOrderModal'
+import { useBackOverlay } from '../../hooks/useBackOverlay'
 
 export const OrdersListPage: React.FC = () => {
   const { hasRole } = useAuth()
@@ -36,6 +37,8 @@ export const OrdersListPage: React.FC = () => {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null)
   const [deletingOrder, setDeletingOrder] = useState<Order | null>(null)
   const [deleting, setDeleting] = useState(false)
+
+  useBackOverlay(Boolean(deletingOrder) && !deleting, () => setDeletingOrder(null))
 
   // Filters
   const [searchTerm, setSearchTerm] = useState(initialQuery)

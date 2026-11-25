@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext'
 import { UserAvatar } from '../ui/UserAvatar'
 import { ROLE_LABELS_BN } from '../../lib/constants'
+import { useBackOverlay } from '../../hooks/useBackOverlay'
 
 interface ProfileModalProps {
   isOpen: boolean
@@ -76,6 +77,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
+
+  useBackOverlay(isOpen && Boolean(user), onClose)
 
   if (!isOpen || !user) return null
 

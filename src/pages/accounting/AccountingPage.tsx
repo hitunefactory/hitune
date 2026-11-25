@@ -19,6 +19,7 @@ import { Payment, Expense, ExpenseCategory, Order, PaymentMethod } from '../../t
 import { useAuth } from '../../contexts/AuthContext'
 import { formatBengaliDate, formatBengaliNumber, formatCurrency, getLocalDateString } from '../../lib/utils'
 import { PAYMENT_METHOD_MAP_BN } from '../../lib/constants'
+import { useBackOverlay } from '../../hooks/useBackOverlay'
 
 export const AccountingPage: React.FC = () => {
   const { user } = useAuth()
@@ -52,6 +53,10 @@ export const AccountingPage: React.FC = () => {
   const [showCatModal, setShowCatModal] = useState(false)
   const [newCatName, setNewCatName] = useState('')
   const [newCatBn, setNewCatBn] = useState('')
+
+  useBackOverlay(showPaymentModal, () => setShowPaymentModal(false))
+  useBackOverlay(showExpenseModal, () => setShowExpenseModal(false))
+  useBackOverlay(showCatModal, () => setShowCatModal(false))
 
   const loadFinancialData = async () => {
     setLoading(true)

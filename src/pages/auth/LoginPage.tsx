@@ -53,7 +53,7 @@ export const LoginPage: React.FC = () => {
     try {
       const res = await login(loginEmail, loginPassword)
       if (res.success) {
-        navigate('/')
+        navigate('/', { replace: true })
       } else {
         setError(res.error || 'ইমেইল বা পাসওয়ার্ড সঠিক নয়।')
       }
@@ -96,7 +96,7 @@ export const LoginPage: React.FC = () => {
       if (res.success) {
         setSuccessMsg('অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে! ড্যাশবোর্ডে প্রবেশ করা হচ্ছে...')
         setTimeout(() => {
-          navigate('/')
+          navigate('/', { replace: true })
         }, 1200)
       } else {
         setError(res.error || 'অ্যাকাউন্ট তৈরি করতে সমস্যা হয়েছে।')
