@@ -32,37 +32,45 @@ CREATE POLICY "Public manage order details" ON public.order_details FOR ALL USIN
 -- 3. ORDER TASKS POLICIES
 ALTER TABLE public.order_tasks ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Authenticated can manage tasks" ON public.order_tasks;
-DROP POLICY IF EXISTS "Public manage tasks" ON public.order_tasks FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Public manage tasks" ON public.order_tasks;
+CREATE POLICY "Public manage tasks" ON public.order_tasks FOR ALL USING (true) WITH CHECK (true);
 
 -- 4. TASK SUBMISSIONS POLICIES
 ALTER TABLE public.task_submissions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Authenticated can manage task submissions" ON public.task_submissions;
-DROP POLICY IF EXISTS "Public manage task submissions" ON public.task_submissions FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Public manage task submissions" ON public.task_submissions;
+CREATE POLICY "Public manage task submissions" ON public.task_submissions FOR ALL USING (true) WITH CHECK (true);
 
 -- 5. ORDER COMMENTS POLICIES
 ALTER TABLE public.order_comments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Authenticated can manage comments" ON public.order_comments;
-DROP POLICY IF EXISTS "Public manage comments" ON public.order_comments FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Public manage comments" ON public.order_comments;
+CREATE POLICY "Public manage comments" ON public.order_comments FOR ALL USING (true) WITH CHECK (true);
 
 -- 6. REVISIONS POLICIES
 ALTER TABLE public.revisions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Authenticated can manage revisions" ON public.revisions;
-DROP POLICY IF EXISTS "Public manage revisions" ON public.revisions FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Public manage revisions" ON public.revisions;
+CREATE POLICY "Public manage revisions" ON public.revisions FOR ALL USING (true) WITH CHECK (true);
 
 -- 7. PAYMENTS POLICIES
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Authenticated can manage payments" ON public.payments;
-DROP POLICY IF EXISTS "Public manage payments" ON public.payments FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Public manage payments" ON public.payments;
+CREATE POLICY "Public manage payments" ON public.payments FOR ALL USING (true) WITH CHECK (true);
 
 -- 8. EXPENSES POLICIES
 ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Authenticated can manage expenses" ON public.expenses;
-DROP POLICY IF EXISTS "Public manage expenses" ON public.expenses FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Public manage expenses" ON public.expenses;
+CREATE POLICY "Public manage expenses" ON public.expenses FOR ALL USING (true) WITH CHECK (true);
 
 -- 9. NOTIFICATIONS POLICIES
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users see only their notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Authenticated can manage notifications" ON public.notifications;
-DROP POLICY IF EXISTS "Public manage notifications" ON public.notifications FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Public manage notifications" ON public.notifications;
+CREATE POLICY "Public manage notifications" ON public.notifications FOR ALL USING (true) WITH CHECK (true);
 
 -- 10. PROFILES POLICIES (Allow public read, insert, and update)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
