@@ -505,11 +505,12 @@ export const DashboardPage: React.FC = () => {
 
       {/* Orders Table for the Selected Date */}
       <div className="rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl overflow-hidden">
-        <div className="p-5 border-b border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="p-5 border-b border-slate-800 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <CalendarDays className="h-4 w-4 text-blue-400" />
             <h3 className="font-bold text-white text-base">
-              {dateFilter === 'ALL' ? 'সকল অর্ডার তালিকা' : `${dateDisplayTitle} (${formatBengaliNumber(filteredOrders.length)} টি)`}
+              <span className="hidden sm:inline">{dateFilter === 'ALL' ? 'সকল অর্ডার তালিকা' : `${dateDisplayTitle} (${formatBengaliNumber(filteredOrders.length)} টি)`}</span>
+              <span className="sm:hidden">অর্ডার তালিকা</span>
             </h3>
           </div>
           <Link
