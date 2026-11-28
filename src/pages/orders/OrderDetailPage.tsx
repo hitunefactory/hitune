@@ -33,7 +33,7 @@ import { Order, TaskSubmission, Revision, OrderComment, Profile, PaymentMethod }
 import { StatusBadge, PaymentBadge } from '../../components/ui/StatusBadge'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatBengaliNumber, formatBengaliDate, formatCurrency } from '../../lib/utils'
-import { STATUS_MAP_BN, PAYMENT_METHOD_MAP_BN } from '../../lib/constants'
+import { PAYMENT_METHOD_MAP_BN } from '../../lib/constants'
 import { InvoiceModal } from '../../components/orders/InvoiceModal'
 import { EditOrderModal } from '../../components/orders/EditOrderModal'
 import { useBackOverlay } from '../../hooks/useBackOverlay'
@@ -74,6 +74,7 @@ export const OrderDetailPage: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [actionBusy, setActionBusy] = useState(false)
 
   useBackOverlay(showPaymentModal, () => setShowPaymentModal(false))
   useBackOverlay(showDeliveryModal, () => setShowDeliveryModal(false))
@@ -192,45 +193,65 @@ export const OrderDetailPage: React.FC = () => {
   }
 
   const handleStartAudio = async () => {
-    if (!order) return
+    if (!order || actionBusy) return
+    setActionBusy(true)
     try {
-      await dataService.updateOrderStatus(order.id, 'AUDIO_IN_PROGRESS', 'অডিও ডিজাইনার কাজ শুরু করেছেন।')
+      if (!order.assigned_audio_staff_id && currentRole === 'AUDIO_DESIGNER' && user) {
+        await dataService.claimAudioOrder(order.id, user.id)
+      } else {
+        await dataService.updateOrderStatus(order.id, 'AUDIO_IN_PROGRESS', 'অডিও ডিজাইনার কাজ শুরু করেছেন।')
+      }
       await loadOrder()
     } catch (err) {
       console.error('Start audio failed:', err)
+    } finally {
+      setActionBusy(false)
     }
   }
 
   const handleCompleteAudio = async () => {
-    if (!order) return
+    if (!order || actionBusy) return
+    setActionBusy(true)
     try {
       const nextStatus = order.video_required ? 'VIDEO_PENDING' : 'READY_FOR_DELIVERY'
       await dataService.updateOrderStatus(order.id, nextStatus, 'অডিও কাজ সম্পন্ন করা হয়েছে।')
-      dataService.notifyAudioCompleted(order)
+      await dataService.notifyAudioCompleted(order)
       await loadOrder()
     } catch (err) {
       console.error('Complete audio failed:', err)
+    } finally {
+      setActionBusy(false)
     }
   }
 
   const handleStartVideo = async () => {
-    if (!order) return
+    if (!order || actionBusy) return
+    setActionBusy(true)
     try {
-      await dataService.updateOrderStatus(order.id, 'VIDEO_IN_PROGRESS', 'ভিডিও এডিটর কাজ শুরু করেছেন।')
+      if (!order.assigned_video_staff_id && currentRole === 'VIDEO_EDITOR' && user) {
+        await dataService.claimVideoOrder(order.id, user.id)
+      } else {
+        await dataService.updateOrderStatus(order.id, 'VIDEO_IN_PROGRESS', 'ভিডিও এডিটর কাজ শুরু করেছেন।')
+      }
       await loadOrder()
     } catch (err) {
       console.error('Start video failed:', err)
+    } finally {
+      setActionBusy(false)
     }
   }
 
   const handleCompleteVideo = async () => {
-    if (!order) return
+    if (!order || actionBusy) return
+    setActionBusy(true)
     try {
       await dataService.updateOrderStatus(order.id, 'READY_FOR_DELIVERY', 'ভিডিও কাজ সম্পন্ন করা হয়েছে।')
-      dataService.notifyVideoCompleted(order)
+      await dataService.notifyVideoCompleted(order)
       await loadOrder()
     } catch (err) {
       console.error('Complete video failed:', err)
+    } finally {
+      setActionBusy(false)
     }
   }
 
@@ -254,15 +275,30 @@ export const OrderDetailPage: React.FC = () => {
   }
 
   // Visual workflow progress steps
+  const includeQcStep =
+    ['AUDIO_QC', 'VIDEO_QC', 'AUDIO_REVISION', 'VIDEO_REVISION'].includes(order.overall_status) ||
+    submissions.length > 0
+
   const steps = [
     { key: 'NEW', label: 'নতুন অর্ডার' },
-    { key: 'AUDIO', label: 'অডিও প্রোডাকশন' },
+    ...(order.audio_required ? [{ key: 'AUDIO', label: 'অডিও প্রোডাকশন' }] : []),
     ...(order.video_required ? [{ key: 'VIDEO', label: 'ভিডিও প্রোডাকশন' }] : []),
-    { key: 'QC', label: 'কোয়ালিটি চেক' },
+    ...(includeQcStep ? [{ key: 'QC', label: 'কোয়ালিটি চেক' }] : []),
     { key: 'DELIVERY', label: 'ডেলিভারি' },
   ]
 
-  const currentStepNum = STATUS_MAP_BN[order.overall_status]?.step || 1
+  const activeStageKey = (() => {
+    const st = order.overall_status
+    if (st === 'DELIVERED') return 'COMPLETED'
+    if (st === 'CANCELLED') return 'CANCELLED'
+    if (st === 'READY_FOR_DELIVERY') return 'DELIVERY'
+    if (st === 'AUDIO_QC' || st === 'VIDEO_QC') return 'QC'
+    if (st.startsWith('VIDEO_')) return 'VIDEO'
+    if (st.startsWith('AUDIO_')) return 'AUDIO'
+    return 'NEW'
+  })()
+
+  const activeStageIdx = steps.findIndex((s) => s.key === activeStageKey)
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -338,7 +374,8 @@ export const OrderDetailPage: React.FC = () => {
           {order.overall_status === 'AUDIO_PENDING' && isAudioWorker && (
             <button
               onClick={handleStartAudio}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-md transition cursor-pointer"
+              disabled={actionBusy}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-xs font-semibold rounded-xl shadow-md transition cursor-pointer"
             >
               <Play className="h-3.5 w-3.5 fill-current" />
               <span>অডিও কাজ শুরু করুন</span>
@@ -348,7 +385,8 @@ export const OrderDetailPage: React.FC = () => {
           {['AUDIO_IN_PROGRESS', 'AUDIO_REVISION', 'AUDIO_QC'].includes(order.overall_status) && isAudioWorker && (
             <button
               onClick={handleCompleteAudio}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-emerald-600/30 transition cursor-pointer"
+              disabled={actionBusy}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-xs font-semibold rounded-xl shadow-md shadow-emerald-600/30 transition cursor-pointer"
             >
               <CheckCircle className="h-3.5 w-3.5" />
               <span>অডিও সম্পন্ন</span>
@@ -358,7 +396,8 @@ export const OrderDetailPage: React.FC = () => {
           {order.overall_status === 'VIDEO_PENDING' && isVideoWorker && (
             <button
               onClick={handleStartVideo}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold rounded-xl shadow-md transition cursor-pointer"
+              disabled={actionBusy}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 text-white text-xs font-semibold rounded-xl shadow-md transition cursor-pointer"
             >
               <Play className="h-3.5 w-3.5 fill-current" />
               <span>ভিডিও কাজ শুরু করুন</span>
@@ -368,7 +407,8 @@ export const OrderDetailPage: React.FC = () => {
           {['VIDEO_IN_PROGRESS', 'VIDEO_REVISION', 'VIDEO_QC'].includes(order.overall_status) && isVideoWorker && (
             <button
               onClick={handleCompleteVideo}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-emerald-600/30 transition cursor-pointer"
+              disabled={actionBusy}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-xs font-semibold rounded-xl shadow-md shadow-emerald-600/30 transition cursor-pointer"
             >
               <CheckCircle className="h-3.5 w-3.5" />
               <span>ভিডিও সম্পন্ন</span>
@@ -391,8 +431,8 @@ export const OrderDetailPage: React.FC = () => {
       <div className="p-4 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl overflow-x-auto">
         <div className="flex items-center justify-between min-w-[500px] px-4 py-2">
           {steps.map((step, idx) => {
-            const isDone = order.overall_status === 'DELIVERED' || idx * 2.5 <= currentStepNum
-            const isCurrent = !isDone && idx * 2.5 <= currentStepNum + 1.5
+            const isDone = activeStageKey === 'COMPLETED' || (activeStageIdx > idx && activeStageIdx !== -1)
+            const isCurrent = activeStageIdx === idx
 
             return (
               <div key={step.key} className="flex items-center gap-2 flex-1 last:flex-none">

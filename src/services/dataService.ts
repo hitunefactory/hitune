@@ -402,6 +402,9 @@ class DataService {
         if (res) syncedCount++
       }
 
+      // Ensure latest staff list is synced so workflow notifications always reach newly added team members
+      await this.getStaff()
+
       // Re-fetch all orders to ensure full sync and purge remotely deleted cloud rows
       await this.getOrders()
       return { syncedOrdersCount: syncedCount, success: true }
@@ -872,6 +875,10 @@ class DataService {
       await this.addComment(orderId, 'system', `[স্ট্যাটাস পরিবর্তন]: ${status}. মন্তব্য: ${notes}`)
     }
 
+    try {
+      window.dispatchEvent(new CustomEvent('hitune:data-synced'))
+    } catch {}
+
     return this.orders[idx]
   }
 
@@ -1095,16 +1102,19 @@ class DataService {
     const nextStatus: OrderOverallStatus = payload.department === 'AUDIO' ? 'AUDIO_QC' : 'VIDEO_QC'
     await this.updateOrderStatus(payload.order_id, nextStatus)
 
+    await this.ensureFreshStaff()
     const qcStaff = this.staff.filter((s) => s.role === 'QUALITY_CONTROLLER' || s.roles?.includes('QUALITY_CONTROLLER'))
-    qcStaff.forEach((qc) => {
-      this.createNotification({
-        user_id: qc.id,
-        title: `${payload.department === 'AUDIO' ? 'অডিও' : 'ভিডিও'} কোয়ালিটি চেকের জন্য প্রস্তুত`,
-        message: `${order.order_number}: সংস্করণ v${versionNumber} সাবমিট করা হয়েছে। পর্যালোচনা করুন।`,
-        link: `/quality-control`,
-        type: 'WARNING',
-      })
-    })
+    await Promise.allSettled(
+      qcStaff.map((qc) =>
+        this.createNotificationAsync({
+          user_id: qc.id,
+          title: `${payload.department === 'AUDIO' ? 'অডিও' : 'ভিডিও'} কোয়ালিটি চেকের জন্য প্রস্তুত`,
+          message: `${order.order_number}: সংস্করণ v${versionNumber} সাবমিট করা হয়েছে। পর্যালোচনা করুন।`,
+          link: `/quality-control`,
+          type: 'WARNING',
+        })
+      )
+    )
 
     return newSub
   }
@@ -1165,7 +1175,7 @@ class DataService {
       if (order.video_required) {
         nextStatus = 'VIDEO_PENDING'
         if (order.assigned_video_staff_id) {
-          this.createNotification({
+          await this.createNotificationAsync({
             user_id: order.assigned_video_staff_id,
             title: 'অডিও অনুমোদিত - ভিডিও এডিটিং শুরু করুন',
             message: `${order.order_number} এর অডিও অনুমোদিত হয়েছে। অডিও ফাইল ডাউনলোড করে ভিডিও তৈরি শুরু করুন।`,
@@ -1175,11 +1185,11 @@ class DataService {
         }
       } else {
         nextStatus = 'READY_FOR_DELIVERY'
-        this.notifyDeliveryTeam(order)
+        await this.notifyDeliveryTeam(order)
       }
     } else {
       nextStatus = 'READY_FOR_DELIVERY'
-      this.notifyDeliveryTeam(order)
+      await this.notifyDeliveryTeam(order)
     }
 
     await this.updateOrderStatus(orderId, nextStatus, `কিউসি অনুমোদন সম্পন্ন। মন্তব্য: ${notes || 'মানসম্মত হয়েছে'}`)
@@ -1258,10 +1268,20 @@ class DataService {
     return newRev
   }
 
-  notifyAudioCompleted(order: Order) {
+  private async ensureFreshStaff(): Promise<void> {
+    if (await this.checkLiveSupport()) {
+      try {
+        await this.getStaff()
+      } catch {}
+    }
+  }
+
+  async notifyAudioCompleted(order: Order): Promise<void> {
+    await this.ensureFreshStaff()
+
     if (order.video_required) {
       if (order.assigned_video_staff_id) {
-        this.createNotification({
+        await this.createNotificationAsync({
           user_id: order.assigned_video_staff_id,
           title: 'অডিও সম্পন্ন — ভিডিও এডিটিং শুরু করুন',
           message: `${order.order_number}: ${order.title} এর অডিও কাজ শেষ হয়েছে। এখন ভিডিও এডিটিং শুরু করুন।`,
@@ -1269,40 +1289,60 @@ class DataService {
           type: 'INFO',
         })
       } else {
-        const videoStaff = this.staff.filter((s) => s.role === 'VIDEO_EDITOR' || s.roles?.includes('VIDEO_EDITOR'))
-        videoStaff.forEach((v) => {
-          this.createNotification({
-            user_id: v.id,
-            title: 'অডিও সম্পন্ন — ভিডিও কাজ প্রস্তুত',
-            message: `${order.order_number}: ${order.title} এর অডিও কাজ সম্পন্ন। ভিডিও কাজের দায়িত্ব নিন।`,
-            link: `/video?orderId=${order.id}`,
-            type: 'INFO',
-          })
-        })
+        const videoStaff = this.staff.filter(
+          (s) => s.is_active !== false && (s.role === 'VIDEO_EDITOR' || s.roles?.includes('VIDEO_EDITOR'))
+        )
+        await Promise.allSettled(
+          videoStaff.map((v) =>
+            this.createNotificationAsync({
+              user_id: v.id,
+              title: 'অডিও সম্পন্ন — ভিডিও কাজ প্রস্তুত',
+              message: `${order.order_number}: ${order.title} এর অডিও কাজ সম্পন্ন। ভিডিও কাজের দায়িত্ব নিন।`,
+              link: `/video?orderId=${order.id}`,
+              type: 'INFO',
+            })
+          )
+        )
       }
     } else {
-      this.notifyDeliveryTeam(order)
+      await this.notifyDeliveryTeam(order)
     }
   }
 
-  notifyVideoCompleted(order: Order) {
-    this.notifyDeliveryTeam(order)
+  async notifyVideoCompleted(order: Order): Promise<void> {
+    await this.notifyDeliveryTeam(order)
   }
 
-  private notifyDeliveryTeam(order: Order) {
-    const deliveryStaff = this.staff.filter((s) =>
-      ['DELIVERY_MANAGER', 'ORDER_MANAGER', 'SUPER_ADMIN'].includes(s.role) ||
-      s.roles?.some((r) => ['DELIVERY_MANAGER', 'ORDER_MANAGER', 'SUPER_ADMIN'].includes(r))
-    )
-    deliveryStaff.forEach((del) => {
-      this.createNotification({
-        user_id: del.id,
-        title: 'অর্ডার ডেলিভারির জন্য প্রস্তুত!',
-        message: `${order.order_number}: ${order.title} এর কাজ সম্পন্ন হয়েছে। ক্লায়েন্ট ডেলিভারি নিশ্চিত করুন।`,
-        link: `/delivery?orderId=${order.id}`,
-        type: 'SUCCESS',
-      })
+  private async notifyDeliveryTeam(order: Order): Promise<void> {
+    await this.ensureFreshStaff()
+
+    const recipientIds = new Set<string>()
+    this.staff.forEach((s) => {
+      if (s.is_active === false) return
+      const isDeliveryRole =
+        ['DELIVERY_MANAGER', 'ORDER_MANAGER', 'SUPER_ADMIN'].includes(s.role) ||
+        s.roles?.some((r) => ['DELIVERY_MANAGER', 'ORDER_MANAGER', 'SUPER_ADMIN'].includes(r))
+      if (isDeliveryRole) {
+        recipientIds.add(s.id)
+      }
     })
+
+    // Also notify the order creator (e.g. Order Manager ID) if active and valid
+    if (order.created_by && isUuid(order.created_by)) {
+      recipientIds.add(order.created_by)
+    }
+
+    await Promise.allSettled(
+      Array.from(recipientIds).map((userId) =>
+        this.createNotificationAsync({
+          user_id: userId,
+          title: 'অর্ডার ডেলিভারির জন্য প্রস্তুত!',
+          message: `${order.order_number}: ${order.title} এর কাজ সম্পন্ন হয়েছে। ক্লায়েন্ট ডেলিভারি নিশ্চিত করুন।`,
+          link: `/delivery?orderId=${order.id}`,
+          type: 'SUCCESS',
+        })
+      )
+    )
   }
 
   async markDelivered(
@@ -1729,7 +1769,8 @@ class DataService {
       try {
         if (matchedUuids.length > 0) {
           await supabase.from('notifications').update({ is_read: true }).in('id', matchedUuids)
-        } else if (isUuid(orderId)) {
+        }
+        if (isUuid(orderId)) {
           const linkPattern = linkPrefix ? `${linkPrefix}?orderId=${orderId}` : `%${orderId}%`
           const query = supabase.from('notifications').update({ is_read: true }).eq('is_read', false)
           if (linkPrefix) {
@@ -2018,17 +2059,51 @@ class DataService {
     }
   }
 
-  createNotification(item: Omit<NotificationItem, 'id' | 'is_read' | 'created_at'>): NotificationItem {
-    // Prevent duplicate creation for the exact same unread alert within 10 minutes
+  private async persistNotificationToCloud(notif: NotificationItem): Promise<void> {
+    if (!isSupabaseConfigured || !isUuid(notif.user_id)) return
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: notif.user_id,
+          title: notif.title,
+          message: notif.message,
+          link: notif.link || null,
+          type: notif.type || 'INFO',
+          is_read: false,
+        })
+        .select()
+        .maybeSingle()
+
+      if (error) {
+        console.warn('Supabase createNotification notice:', error.message)
+      } else if (data?.id) {
+        const target = this.notifications.find((n) => n.id === notif.id)
+        if (target) {
+          target.id = data.id
+          target.created_at = data.created_at || target.created_at
+          saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
+        }
+      }
+    } catch {}
+  }
+
+  private buildLocalNotification(item: Omit<NotificationItem, 'id' | 'is_read' | 'created_at'>): {
+    notif: NotificationItem
+    isDuplicate: boolean
+  } {
+    // Prevent rapid accidental double-click duplicate notifications within 15 seconds
     const existing = this.notifications.find(
       (n) =>
         !n.is_read &&
         n.user_id === item.user_id &&
         n.title === item.title &&
         n.message === item.message &&
-        Date.now() - new Date(n.created_at).getTime() < 10 * 60 * 1000
+        Date.now() - new Date(n.created_at).getTime() < 15 * 1000
     )
-    if (existing) return existing
+    if (existing) {
+      return { notif: existing, isDuplicate: true }
+    }
 
     const tempId = `notif-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`
     const notif: NotificationItem = {
@@ -2040,38 +2115,22 @@ class DataService {
     this.notifications.unshift(notif)
     saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
     this.emitNotificationsUpdated()
+    return { notif, isDuplicate: false }
+  }
 
-    if (isSupabaseConfigured && isUuid(item.user_id)) {
-      Promise.resolve(
-        supabase
-          .from('notifications')
-          .insert({
-            user_id: item.user_id,
-            title: item.title,
-            message: item.message,
-            link: item.link || null,
-            type: item.type || 'INFO',
-            is_read: false,
-          })
-          .select()
-          .maybeSingle()
-      )
-        .then(({ data, error }: any) => {
-          if (error) {
-            console.warn('Supabase createNotification notice:', error.message)
-          } else if (data?.id) {
-            // Sync local ID with real Supabase UUID so no duplicate entries appear later
-            const target = this.notifications.find((n) => n.id === tempId)
-            if (target) {
-              target.id = data.id
-              target.created_at = data.created_at || target.created_at
-              saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
-            }
-          }
-        })
-        .catch(() => {})
+  createNotification(item: Omit<NotificationItem, 'id' | 'is_read' | 'created_at'>): NotificationItem {
+    const { notif, isDuplicate } = this.buildLocalNotification(item)
+    if (!isDuplicate) {
+      this.persistNotificationToCloud(notif)
     }
+    return notif
+  }
 
+  async createNotificationAsync(item: Omit<NotificationItem, 'id' | 'is_read' | 'created_at'>): Promise<NotificationItem> {
+    const { notif, isDuplicate } = this.buildLocalNotification(item)
+    if (!isDuplicate) {
+      await this.persistNotificationToCloud(notif)
+    }
     return notif
   }
 

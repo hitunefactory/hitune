@@ -275,6 +275,13 @@ export const DashboardPage: React.FC = () => {
   const displayedPendingTasks = myPendingTasks.slice(0, 5)
   const hiddenPendingCount = myPendingTasks.length - displayedPendingTasks.length
 
+  // Ready-for-delivery queue across all dates for Order Manager / Delivery Manager / Super Admin
+  const readyForDeliveryOrders = hasRole(['SUPER_ADMIN', 'ORDER_MANAGER', 'DELIVERY_MANAGER'])
+    ? allOrders.filter((o) => o.overall_status === 'READY_FOR_DELIVERY')
+    : []
+  const displayedDeliveryOrders = readyForDeliveryOrders.slice(0, 5)
+  const hiddenDeliveryCount = readyForDeliveryOrders.length - displayedDeliveryOrders.length
+
   // Chart data for current date selection
   const productionChartData = [
     { name: 'নতুন', count: currentStats.newOrders },
@@ -361,6 +368,60 @@ export const DashboardPage: React.FC = () => {
               className="w-full px-4 py-2.5 text-xs text-amber-400 hover:text-amber-300 font-semibold text-center border-t border-amber-500/20 hover:bg-amber-500/5 transition"
             >
               আরো {hiddenPendingCount} টি কাজ আছে — সব দেখুন →
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Ready For Delivery Banner (ORDER_MANAGER / DELIVERY_MANAGER / SUPER_ADMIN) ── */}
+      {readyForDeliveryOrders.length > 0 && (
+        <div className="rounded-2xl border border-teal-500/40 bg-teal-500/5 overflow-hidden shadow-lg shadow-teal-900/10">
+          <div className="flex items-center gap-2.5 px-4 py-3 bg-teal-500/10 border-b border-teal-500/20">
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-400" />
+            </span>
+            <Truck className="h-4 w-4 text-teal-400 shrink-0" />
+            <span className="text-sm font-bold text-teal-300">
+              ডেলিভারির জন্য প্রস্তুত
+            </span>
+            <span className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
+              {formatBengaliNumber(readyForDeliveryOrders.length)} টি
+            </span>
+          </div>
+
+          <div className="divide-y divide-slate-800/60">
+            {displayedDeliveryOrders.map((ord) => (
+              <button
+                key={ord.id}
+                type="button"
+                onClick={() => navigate(`/delivery?orderId=${ord.id}`)}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-800/40 active:bg-slate-800/60 transition group cursor-pointer"
+              >
+                <div className="shrink-0 h-9 w-9 rounded-xl bg-teal-600/20 text-teal-400 flex items-center justify-center">
+                  <Truck className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-white leading-snug truncate">{ord.title}</div>
+                  <div className="text-xs text-slate-400 mt-0.5 truncate">
+                    <span className="font-mono">{ord.order_number}</span> • {ord.client_name}
+                  </div>
+                </div>
+                <div className="shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-teal-500/15 text-teal-300 border border-teal-500/30">
+                  ডেলিভারি দিন
+                </div>
+                <ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-slate-300 shrink-0 transition" />
+              </button>
+            ))}
+          </div>
+
+          {hiddenDeliveryCount > 0 && (
+            <button
+              type="button"
+              onClick={() => navigate('/delivery')}
+              className="w-full px-4 py-2.5 text-xs text-teal-400 hover:text-teal-300 font-semibold text-center border-t border-teal-500/20 hover:bg-teal-500/5 transition cursor-pointer"
+            >
+              আরো {formatBengaliNumber(hiddenDeliveryCount)} টি ডেলিভারির অপেক্ষায় — সব দেখুন →
             </button>
           )}
         </div>

@@ -99,7 +99,7 @@ export const AudioDeptPage: React.FC = () => {
     try {
       const nextStatus: OrderOverallStatus = order.video_required ? 'VIDEO_PENDING' : 'READY_FOR_DELIVERY'
       await dataService.updateOrderStatus(order.id, nextStatus, 'অডিও কাজ সম্পন্ন করা হয়েছে।')
-      dataService.notifyAudioCompleted(order)
+      await dataService.notifyAudioCompleted(order)
       setConfirmOrder(null)
       await loadAudioOrders()
     } catch (err) {

@@ -92,11 +92,20 @@ export const DeliveryPage: React.FC = () => {
   }, [])
 
   useEffect(() => {
-    if (!loading && targetSection === 'completed') {
+    if (loading) return
+    if (targetOrderId) {
+      const match = orders.find((o) => o.id === targetOrderId || o.order_number === targetOrderId)
+      if (match) {
+        const el = document.getElementById(`delivery-order-${match.id}`)
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+      return
+    }
+    if (targetSection === 'completed') {
       const el = document.getElementById('completed-deliveries')
       el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
-  }, [loading, targetSection])
+  }, [loading, targetOrderId, targetSection, orders])
 
   const handleConfirmDelivery = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -112,7 +121,7 @@ export const DeliveryPage: React.FC = () => {
         notes: deliveryNotes,
       })
       setSelectedOrder(null)
-      loadDeliveryOrders()
+      await loadDeliveryOrders()
     } catch (err) {
       console.error('Delivery confirmation failed:', err)
     } finally {
@@ -157,8 +166,9 @@ export const DeliveryPage: React.FC = () => {
             {readyOrders.map((ord) => (
               <div
                 key={ord.id}
+                id={`delivery-order-${ord.id}`}
                 className={`p-5 rounded-3xl bg-slate-900/90 border shadow-xl space-y-3 flex flex-col justify-between transition ${
-                  targetOrderId === ord.id
+                  targetOrderId === ord.id || targetOrderId === ord.order_number
                     ? 'border-teal-400 ring-2 ring-teal-400/50'
                     : 'border-teal-500/40'
                 }`}
