@@ -50,8 +50,6 @@ export const AccountingPage: React.FC = () => {
   const [selectedOrderId, setSelectedOrderId] = useState('')
   const [payAmount, setPayAmount] = useState<number>(0)
   const [payMethod, setPayMethod] = useState<PaymentMethod>('CASH')
-  const [payRef, setPayRef] = useState('')
-  const [payNotes, setPayNotes] = useState('')
 
   // Expense Modal
   const [showExpenseModal, setShowExpenseModal] = useState(false)
@@ -109,14 +107,10 @@ export const AccountingPage: React.FC = () => {
         order_number: targetOrder?.order_number,
         amount: Number(payAmount),
         payment_method: payMethod,
-        transaction_reference: payRef,
-        notes: payNotes,
         recorded_by: user?.id,
       })
       setShowPaymentModal(false)
       setPayAmount(0)
-      setPayRef('')
-      setPayNotes('')
       loadFinancialData()
     } catch (err) {
       console.error('Record payment failed:', err)
@@ -489,28 +483,6 @@ export const AccountingPage: React.FC = () => {
                     <option key={k} value={k}>{v}</option>
                   ))}
                 </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">রেফারেন্স / ট্রানজেকশন আইডি</label>
-                <input
-                  type="text"
-                  value={payRef}
-                  onChange={(e) => setPayRef(e.target.value)}
-                  placeholder="TRX-12345"
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">মন্তব্য</label>
-                <input
-                  type="text"
-                  value={payNotes}
-                  onChange={(e) => setPayNotes(e.target.value)}
-                  placeholder="বকেয়া আদায়"
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200"
-                />
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
