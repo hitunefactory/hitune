@@ -124,6 +124,14 @@ export const VideoDeptPage: React.FC = () => {
       return ['READY_FOR_DELIVERY', 'DELIVERED', 'VIDEO_QC'].includes(o.overall_status)
     }
     return o.overall_status === statusFilter
+  }).sort((a, b) => {
+    // Pending/revision first → in-progress → completed
+    const priority: Record<string, number> = {
+      VIDEO_REVISION: 0, VIDEO_PENDING: 1, NEW: 2,
+      VIDEO_IN_PROGRESS: 3, VIDEO_QC: 4,
+      READY_FOR_DELIVERY: 5, DELIVERED: 6,
+    }
+    return (priority[a.overall_status] ?? 8) - (priority[b.overall_status] ?? 8)
   })
 
   const inProgressCount = orders.filter((o) => o.overall_status === 'VIDEO_IN_PROGRESS' || o.overall_status === 'VIDEO_REVISION').length

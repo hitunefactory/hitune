@@ -127,6 +127,15 @@ export const AudioDeptPage: React.FC = () => {
       return ['VIDEO_PENDING', 'VIDEO_IN_PROGRESS', 'VIDEO_SUBMITTED', 'VIDEO_QC', 'READY_FOR_DELIVERY', 'DELIVERED', 'AUDIO_QC'].includes(o.overall_status)
     }
     return o.overall_status === statusFilter
+  }).sort((a, b) => {
+    // Pending/revision first → in-progress → completed
+    const priority: Record<string, number> = {
+      AUDIO_REVISION: 0, AUDIO_PENDING: 1, NEW: 2,
+      AUDIO_IN_PROGRESS: 3, AUDIO_QC: 4,
+      VIDEO_PENDING: 5, VIDEO_IN_PROGRESS: 5, VIDEO_SUBMITTED: 5, VIDEO_QC: 5,
+      READY_FOR_DELIVERY: 6, DELIVERED: 7,
+    }
+    return (priority[a.overall_status] ?? 8) - (priority[b.overall_status] ?? 8)
   })
 
   // Quick stats

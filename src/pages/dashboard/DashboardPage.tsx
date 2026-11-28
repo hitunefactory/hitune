@@ -25,6 +25,7 @@ import {
   ChevronDown,
   Phone,
   Eye,
+  Bell,
 } from 'lucide-react'
 import { StatCard } from '../../components/dashboard/StatCard'
 import { StatusBadge } from '../../components/ui/StatusBadge'
@@ -48,7 +49,7 @@ type DateFilterType = 'TODAY' | 'YESTERDAY' | 'DAY_BEFORE' | 'CUSTOM' | 'ALL'
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate()
-  const { hasRole } = useAuth()
+  const { hasRole, user } = useAuth()
   const [lifetimeStats, setLifetimeStats] = useState<any>(null)
   const [allOrders, setAllOrders] = useState<Order[]>([])
   const [allPayments, setAllPayments] = useState<Payment[]>([])
@@ -240,6 +241,40 @@ export const DashboardPage: React.FC = () => {
     )
   }
 
+  // ── Pending tasks for AUDIO_DESIGNER / VIDEO_EDITOR ──
+  const audioPendingStatuses = ['AUDIO_PENDING', 'NEW', 'AUDIO_REVISION']
+  const videoPendingStatuses = ['VIDEO_PENDING', 'VIDEO_REVISION']
+  const audioPriority: Record<string, number> = { AUDIO_REVISION: 0, AUDIO_PENDING: 1, NEW: 2 }
+  const videoPriority: Record<string, number> = { VIDEO_REVISION: 0, VIDEO_PENDING: 1 }
+
+  type PendingTask = Order & { _taskType: 'audio' | 'video'; _priority: number }
+
+  const audioTasks: PendingTask[] = hasRole(['AUDIO_DESIGNER']) && user
+    ? allOrders
+        .filter(
+          (o) =>
+            audioPendingStatuses.includes(o.overall_status) &&
+            o.audio_required &&
+            o.assigned_audio_staff_id === user.id
+        )
+        .map((o) => ({ ...o, _taskType: 'audio' as const, _priority: audioPriority[o.overall_status] ?? 3 }))
+    : []
+
+  const videoTasks: PendingTask[] = hasRole(['VIDEO_EDITOR']) && user
+    ? allOrders
+        .filter(
+          (o) =>
+            videoPendingStatuses.includes(o.overall_status) &&
+            o.video_required &&
+            o.assigned_video_staff_id === user.id
+        )
+        .map((o) => ({ ...o, _taskType: 'video' as const, _priority: videoPriority[o.overall_status] ?? 3 }))
+    : []
+
+  const myPendingTasks = [...audioTasks, ...videoTasks].sort((a, b) => a._priority - b._priority)
+  const displayedPendingTasks = myPendingTasks.slice(0, 5)
+  const hiddenPendingCount = myPendingTasks.length - displayedPendingTasks.length
+
   // Chart data for current date selection
   const productionChartData = [
     { name: 'নতুন', count: currentStats.newOrders },
@@ -253,6 +288,84 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* ── Pending Tasks Banner (AUDIO_DESIGNER / VIDEO_EDITOR only) ── */}
+      {myPendingTasks.length > 0 && (
+        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 overflow-hidden shadow-lg shadow-amber-900/10">
+          {/* Banner header */}
+          <div className="flex items-center gap-2.5 px-4 py-3 bg-amber-500/10 border-b border-amber-500/20">
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400" />
+            </span>
+            <Bell className="h-4 w-4 text-amber-400 shrink-0" />
+            <span className="text-sm font-bold text-amber-300">
+              আমার অপেক্ষামান কাজ
+            </span>
+            <span className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              {myPendingTasks.length} টি
+            </span>
+          </div>
+
+          {/* Task rows */}
+          <div className="divide-y divide-slate-800/60">
+            {displayedPendingTasks.map((task) => {
+              const isRevision = task.overall_status === 'AUDIO_REVISION' || task.overall_status === 'VIDEO_REVISION'
+              const dest = task._taskType === 'audio'
+                ? `/audio?orderId=${task.id}`
+                : `/video?orderId=${task.id}`
+              return (
+                <button
+                  key={task.id}
+                  type="button"
+                  onClick={() => navigate(dest)}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-800/40 active:bg-slate-800/60 transition group"
+                >
+                  {/* Icon */}
+                  <div className={`shrink-0 h-9 w-9 rounded-xl flex items-center justify-center ${
+                    task._taskType === 'audio'
+                      ? 'bg-blue-600/20 text-blue-400'
+                      : 'bg-cyan-600/20 text-cyan-400'
+                  }`}>
+                    {task._taskType === 'audio'
+                      ? <Headphones className="h-4 w-4" />
+                      : <Video className="h-4 w-4" />
+                    }
+                  </div>
+
+                  {/* Info */}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-white leading-snug truncate">{task.title}</div>
+                    <div className="text-xs text-slate-400 mt-0.5 font-mono">{task.order_number}</div>
+                  </div>
+
+                  {/* Status badge */}
+                  <div className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border ${
+                    isRevision
+                      ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                      : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                  }`}>
+                    {isRevision ? '🔁 রিভিশন' : '⏳ পেন্ডিং'}
+                  </div>
+
+                  <ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-slate-300 shrink-0 transition" />
+                </button>
+              )
+            })}
+          </div>
+
+          {/* "More" link */}
+          {hiddenPendingCount > 0 && (
+            <button
+              type="button"
+              onClick={() => navigate(hasRole(['AUDIO_DESIGNER']) ? '/audio?scope=MINE' : '/video?scope=MINE')}
+              className="w-full px-4 py-2.5 text-xs text-amber-400 hover:text-amber-300 font-semibold text-center border-t border-amber-500/20 hover:bg-amber-500/5 transition"
+            >
+              আরো {hiddenPendingCount} টি কাজ আছে — সব দেখুন →
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Welcome & Action Banner (Desktop only — mobile already has clean + button in Header) */}
       <div className="hidden md:block relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-900/60 via-slate-900 to-[#0b1120] border border-blue-500/20 p-5 sm:p-6 shadow-2xl">
         <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-blue-500/10 to-transparent pointer-events-none" />
