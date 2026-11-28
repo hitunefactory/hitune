@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../contexts/AuthContext'
 import {
   FolderKanban,
   Sparkles,
@@ -46,6 +47,8 @@ import {
 type DateFilterType = 'TODAY' | 'YESTERDAY' | 'DAY_BEFORE' | 'CUSTOM' | 'ALL'
 
 export const DashboardPage: React.FC = () => {
+  const navigate = useNavigate()
+  const { hasRole } = useAuth()
   const [lifetimeStats, setLifetimeStats] = useState<any>(null)
   const [allOrders, setAllOrders] = useState<Order[]>([])
   const [allPayments, setAllPayments] = useState<Payment[]>([])
@@ -250,23 +253,25 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Welcome & Action Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-900/60 via-slate-900 to-[#0b1120] border border-blue-500/20 p-5 sm:p-6 shadow-2xl">
+      {/* Welcome & Action Banner (Desktop only — mobile already has clean + button in Header) */}
+      <div className="hidden md:block relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-900/60 via-slate-900 to-[#0b1120] border border-blue-500/20 p-5 sm:p-6 shadow-2xl">
         <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-blue-500/10 to-transparent pointer-events-none" />
         <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
             এইচ আই টিউন স্টুডিও ড্যাশবোর্ড
           </h1>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <Link
-              to="/orders/new"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-2xl shadow-lg shadow-blue-600/30 transition transform active:scale-95"
-            >
-              <Plus className="h-4 w-4" />
-              <span>নতুন অর্ডার গ্রহণ</span>
-            </Link>
-          </div>
+          {hasRole(['SUPER_ADMIN', 'ORDER_MANAGER']) && (
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <Link
+                to="/orders/new"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-2xl shadow-lg shadow-blue-600/30 transition transform active:scale-95"
+              >
+                <Plus className="h-4 w-4" />
+                <span>নতুন অর্ডার গ্রহণ</span>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
@@ -279,36 +284,66 @@ export const DashboardPage: React.FC = () => {
             value={currentStats.totalOrders}
             icon={FolderKanban}
             colorScheme="blue"
+            onClick={() =>
+              navigate(
+                dateFilter === 'CUSTOM'
+                  ? `/orders?date=CUSTOM&customDate=${encodeURIComponent(customDate)}`
+                  : `/orders?date=${dateFilter}`
+              )
+            }
           />
           <StatCard
             title="নতুন অর্ডার"
             value={currentStats.newOrders}
             icon={Sparkles}
             colorScheme="cyan"
+            onClick={() => navigate('/orders?status=NEW')}
           />
           <StatCard
             title="পেন্ডিং অর্ডার"
             value={currentStats.pendingOrders}
             icon={Clock}
             colorScheme="amber"
+            onClick={() => navigate('/orders?status=PENDING')}
           />
           <StatCard
             title="অডিও কাজ চলমান"
             value={currentStats.audioInProgress}
             icon={Headphones}
             colorScheme="blue"
+            onClick={() =>
+              navigate(
+                hasRole(['SUPER_ADMIN', 'AUDIO_DESIGNER'])
+                  ? '/audio?status=AUDIO_IN_PROGRESS'
+                  : '/orders?status=AUDIO_IN_PROGRESS'
+              )
+            }
           />
           <StatCard
             title="ভিডিও কাজ চলমান"
             value={currentStats.videoInProgress}
             icon={Video}
             colorScheme="cyan"
+            onClick={() =>
+              navigate(
+                hasRole(['SUPER_ADMIN', 'VIDEO_EDITOR'])
+                  ? '/video?status=VIDEO_IN_PROGRESS'
+                  : '/orders?status=VIDEO_IN_PROGRESS'
+              )
+            }
           />
           <StatCard
             title="ডেলিভারি সম্পন্ন"
             value={currentStats.delivered}
             icon={CheckCheck}
             colorScheme="emerald"
+            onClick={() =>
+              navigate(
+                hasRole(['SUPER_ADMIN', 'ORDER_MANAGER', 'DELIVERY_MANAGER'])
+                  ? '/delivery?section=completed'
+                  : '/orders?status=DELIVERED'
+              )
+            }
           />
         </div>
       </div>
@@ -321,6 +356,13 @@ export const DashboardPage: React.FC = () => {
           icon={Coins}
           colorScheme="blue"
           isCurrency
+          onClick={() =>
+            navigate(
+              dateFilter === 'CUSTOM'
+                ? `/orders?date=CUSTOM&customDate=${encodeURIComponent(customDate)}`
+                : `/orders?date=${dateFilter}`
+            )
+          }
         />
         <StatCard
           title="আদায়কৃত পেমেন্ট"
@@ -328,6 +370,11 @@ export const DashboardPage: React.FC = () => {
           icon={Wallet}
           colorScheme="emerald"
           isCurrency
+          onClick={
+            hasRole(['SUPER_ADMIN', 'ACCOUNTANT', 'ORDER_MANAGER'])
+              ? () => navigate('/accounting?tab=income')
+              : undefined
+          }
         />
         <StatCard
           title="বকেয়া প্রাপ্য"
@@ -335,6 +382,11 @@ export const DashboardPage: React.FC = () => {
           icon={AlertCircle}
           colorScheme="amber"
           isCurrency
+          onClick={
+            hasRole(['SUPER_ADMIN', 'ACCOUNTANT', 'ORDER_MANAGER'])
+              ? () => navigate('/accounting')
+              : undefined
+          }
         />
       </div>
 
@@ -616,6 +668,11 @@ export const DashboardPage: React.FC = () => {
               icon={Wallet}
               colorScheme="emerald"
               isCurrency
+              onClick={
+                hasRole(['SUPER_ADMIN', 'ACCOUNTANT', 'ORDER_MANAGER'])
+                  ? () => navigate('/accounting?tab=income')
+                  : undefined
+              }
             />
             <StatCard
               title="মোট বকেয়া"
@@ -623,6 +680,11 @@ export const DashboardPage: React.FC = () => {
               icon={AlertCircle}
               colorScheme="amber"
               isCurrency
+              onClick={
+                hasRole(['SUPER_ADMIN', 'ACCOUNTANT', 'ORDER_MANAGER'])
+                  ? () => navigate('/accounting')
+                  : undefined
+              }
             />
             <StatCard
               title="মোট খরচ"
@@ -630,6 +692,11 @@ export const DashboardPage: React.FC = () => {
               icon={TrendingUp}
               colorScheme="rose"
               isCurrency
+              onClick={
+                hasRole(['SUPER_ADMIN', 'ACCOUNTANT', 'ORDER_MANAGER'])
+                  ? () => navigate('/accounting?tab=expenses')
+                  : undefined
+              }
             />
             <StatCard
               title="নেট ব্যালেন্স"
@@ -637,6 +704,11 @@ export const DashboardPage: React.FC = () => {
               icon={ArrowUpRight}
               colorScheme="blue"
               isCurrency
+              onClick={
+                hasRole(['SUPER_ADMIN', 'ACCOUNTANT', 'ORDER_MANAGER'])
+                  ? () => navigate('/accounting')
+                  : undefined
+              }
             />
           </div>
         )}

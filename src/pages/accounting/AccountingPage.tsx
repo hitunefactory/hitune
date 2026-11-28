@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Wallet,
   DollarSign,
@@ -30,7 +31,17 @@ export const AccountingPage: React.FC = () => {
   const [loading, setLoading] = useState(true)
 
   // Active view tab
-  const [activeTab, setActiveTab] = useState<'income' | 'expenses' | 'summary'>('summary')
+  const [searchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState<'income' | 'expenses' | 'summary'>(
+    tabParam === 'income' || tabParam === 'expenses' || tabParam === 'summary' ? tabParam : 'summary'
+  )
+
+  useEffect(() => {
+    if (tabParam === 'income' || tabParam === 'expenses' || tabParam === 'summary') {
+      setActiveTab(tabParam)
+    }
+  }, [tabParam])
 
   // Payment Modal
   const [showPaymentModal, setShowPaymentModal] = useState(false)

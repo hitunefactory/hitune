@@ -28,11 +28,17 @@ export const AudioDeptPage: React.FC = () => {
   const canAction = currentRole === 'AUDIO_DESIGNER' || (currentRole === 'SUPER_ADMIN' && user?.role === 'SUPER_ADMIN')
   const [searchParams] = useSearchParams()
   const targetOrderId = searchParams.get('orderId')
+  const initialStatusFilter = searchParams.get('status') || 'ALL'
 
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
-  const [statusFilter, setStatusFilter] = useState<string>('ALL')
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter)
   const [scopeFilter, setScopeFilter] = useState<'ALL' | 'MINE'>('ALL')
+
+  useEffect(() => {
+    const st = searchParams.get('status')
+    if (st) setStatusFilter(st)
+  }, [searchParams])
 
   // Confirmation Modal
   const [confirmOrder, setConfirmOrder] = useState<Order | null>(null)

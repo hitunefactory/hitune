@@ -27,6 +27,9 @@ export const OrdersListPage: React.FC = () => {
   const canManageOrders = hasRole(['SUPER_ADMIN', 'ORDER_MANAGER', 'DELIVERY_MANAGER'])
   const [searchParams] = useSearchParams()
   const initialQuery = searchParams.get('q') || ''
+  const initialStatus = searchParams.get('status') || 'ALL'
+  const initialDate = (searchParams.get('date') as 'ALL' | 'TODAY' | 'YESTERDAY' | 'DAY_BEFORE' | 'CUSTOM') || 'ALL'
+  const initialCustomDate = searchParams.get('customDate') || getLocalDateString(new Date())
 
   const [orders, setOrders] = useState<Order[]>([])
   const [categories, setCategories] = useState<OrderCategory[]>([])
@@ -43,9 +46,20 @@ export const OrdersListPage: React.FC = () => {
   // Filters
   const [searchTerm, setSearchTerm] = useState(initialQuery)
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL')
-  const [selectedStatus, setSelectedStatus] = useState<string>('ALL')
-  const [selectedDateFilter, setSelectedDateFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'DAY_BEFORE' | 'CUSTOM'>('ALL')
-  const [customDate, setCustomDate] = useState<string>(() => getLocalDateString(new Date()))
+  const [selectedStatus, setSelectedStatus] = useState<string>(initialStatus)
+  const [selectedDateFilter, setSelectedDateFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'DAY_BEFORE' | 'CUSTOM'>(initialDate)
+  const [customDate, setCustomDate] = useState<string>(initialCustomDate)
+
+  useEffect(() => {
+    const q = searchParams.get('q')
+    const st = searchParams.get('status')
+    const dt = searchParams.get('date') as 'ALL' | 'TODAY' | 'YESTERDAY' | 'DAY_BEFORE' | 'CUSTOM' | null
+    const cd = searchParams.get('customDate')
+    if (q !== null) setSearchTerm(q)
+    if (st !== null) setSelectedStatus(st)
+    if (dt !== null) setSelectedDateFilter(dt)
+    if (cd !== null) setCustomDate(cd)
+  }, [searchParams])
 
   const loadData = async (isSilent = false) => {
     if (!isSilent) setLoading(true)
@@ -121,7 +135,10 @@ export const OrdersListPage: React.FC = () => {
       order.category?.slug === selectedCategory
 
     const matchesStatus =
-      selectedStatus === 'ALL' || order.overall_status === selectedStatus
+      selectedStatus === 'ALL' ||
+      (selectedStatus === 'PENDING'
+        ? order.overall_status === 'AUDIO_PENDING' || order.overall_status === 'VIDEO_PENDING'
+        : order.overall_status === selectedStatus)
 
     const matchesDate =
       !targetDateStr || getLocalDateString(order.created_at) === targetDateStr
@@ -191,6 +208,7 @@ export const OrdersListPage: React.FC = () => {
               className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="ALL">সকল স্ট্যাটাস</option>
+              <option value="PENDING">সকল পেন্ডিং (অডিও ও ভিডিও)</option>
               {Object.entries(STATUS_MAP_BN).map(([k, v]) => (
                 <option key={k} value={k}>
                   {v.label}

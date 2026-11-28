@@ -69,7 +69,7 @@ export const StatCard: React.FC<StatCardProps> = ({
         'p-3 sm:p-4 rounded-2xl bg-gradient-to-br bg-slate-900/80 border transition-all duration-200 relative overflow-hidden group shadow-lg',
         currentTheme.bg,
         currentTheme.border,
-        onClick && 'cursor-pointer hover:scale-[1.02]'
+        onClick && 'cursor-pointer hover:scale-[1.02] active:scale-[0.97]'
       )}
     >
       <div className="flex items-start justify-between gap-2">

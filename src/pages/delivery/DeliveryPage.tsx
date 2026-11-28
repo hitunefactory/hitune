@@ -26,6 +26,7 @@ export const DeliveryPage: React.FC = () => {
   const canManageOrders = hasRole(['SUPER_ADMIN', 'ORDER_MANAGER', 'DELIVERY_MANAGER'])
   const [searchParams] = useSearchParams()
   const targetOrderId = searchParams.get('orderId')
+  const targetSection = searchParams.get('section')
   const [orders, setOrders] = useState<Order[]>([])
   const [staffList, setStaffList] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
@@ -89,6 +90,13 @@ export const DeliveryPage: React.FC = () => {
     window.addEventListener('hitune:data-synced', onSync)
     return () => window.removeEventListener('hitune:data-synced', onSync)
   }, [])
+
+  useEffect(() => {
+    if (!loading && targetSection === 'completed') {
+      const el = document.getElementById('completed-deliveries')
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [loading, targetSection])
 
   const handleConfirmDelivery = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -234,7 +242,7 @@ export const DeliveryPage: React.FC = () => {
       </div>
 
       {/* Completed Deliveries History */}
-      <div className="space-y-3 pt-4">
+      <div id="completed-deliveries" className="space-y-3 pt-4 scroll-mt-20">
         <h2 className="text-sm font-bold text-white flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-emerald-400" />
           <span>সম্প্রতি সম্পন্ন ডেলিভারি রেকর্ড</span>
