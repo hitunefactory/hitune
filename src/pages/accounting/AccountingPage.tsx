@@ -175,14 +175,6 @@ export const AccountingPage: React.FC = () => {
 
         <div className="flex items-center gap-2.5">
           <button
-            onClick={() => setShowExpenseModal(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-xl shadow-md transition"
-          >
-            <Plus className="h-4 w-4" />
-            <span>নতুন খরচ</span>
-          </button>
-
-          <button
             onClick={() => setShowPaymentModal(true)}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-md transition"
           >
