@@ -38,10 +38,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const CURRENT_USER_KEY = 'hitune_active_user_id_v2'
 const CURRENT_ROLE_KEY = 'hitune_active_role_v2'
 
-// Tab-isolated storage helpers
+// Persistent storage helpers — write to both sessionStorage (tab) and localStorage (cross-session)
 const setTabUser = (userId: string, role: UserRole) => {
   sessionStorage.setItem(CURRENT_USER_KEY, userId)
   sessionStorage.setItem(CURRENT_ROLE_KEY, role)
+  localStorage.setItem(CURRENT_USER_KEY, userId)
+  localStorage.setItem(CURRENT_ROLE_KEY, role)
 }
 
 const clearTabUser = () => {
@@ -126,6 +128,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setTabUser(p.id, p.role)
           }
         } else if (event === 'SIGNED_OUT') {
+          // Only clear session for Supabase-auth users (not custom staff logins)
+          const savedId = localStorage.getItem(CURRENT_USER_KEY)
+          if (savedId?.startsWith('usr-') || !savedId) {
+            // Custom staff user — keep their session alive, ignore Supabase sign-out
+            return
+          }
           setUser(null)
           clearTabUser()
         }
@@ -148,7 +156,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return
     if (user.roles.includes(newRole) || user.role === 'SUPER_ADMIN') {
       setCurrentRole(newRole)
+      // Persist role switch to both storages so it survives PWA restarts
       sessionStorage.setItem(CURRENT_ROLE_KEY, newRole)
+      localStorage.setItem(CURRENT_ROLE_KEY, newRole)
     }
   }
 
