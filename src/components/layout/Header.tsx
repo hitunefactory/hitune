@@ -5,8 +5,6 @@ import {
   Bell,
   Search,
   Plus,
-  Sun,
-  Moon,
   LogOut,
   ChevronDown,
   Layers,
@@ -16,13 +14,11 @@ import {
   Trash2,
   RotateCcw,
   User,
-  RefreshCw,
   Volume2,
   VolumeX,
   BellRing,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
-import { useTheme } from '../../contexts/ThemeContext'
 import { dataService } from '../../services/dataService'
 import { NotificationItem, UserRole } from '../../types/database'
 import { ROLE_LABELS_BN } from '../../lib/constants'
@@ -47,7 +43,6 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
   const { user, currentRole, availableRoles, switchRole, logout, hasRole } = useAuth()
-  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
 
   const [showMobileSearch, setShowMobileSearch] = useState(false)
@@ -57,8 +52,6 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [syncing, setSyncing] = useState(false)
-  const [syncMessage, setSyncMessage] = useState('')
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => isNotificationSoundEnabled())
   const [notifPermission, setNotifPermission] = useState<BrowserNotificationPermission>(() =>
     getBrowserNotificationPermission()
@@ -83,24 +76,6 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
-
-  const handleCloudSync = async () => {
-    setSyncing(true)
-    setSyncMessage('')
-    try {
-      const res = await dataService.syncAllToCloud()
-      window.dispatchEvent(new CustomEvent('hitune:data-synced', { detail: res }))
-      await loadNotifications()
-      setSyncMessage(res.syncedOrdersCount > 0 ? `${res.syncedOrdersCount} টি অর্ডার ক্লাউডে সিঙ্ক হয়েছে` : 'ক্লাউড সিঙ্ক সফল')
-      setTimeout(() => setSyncMessage(''), 3000)
-    } catch (err) {
-      console.error('Cloud sync error:', err)
-      setSyncMessage('সিঙ্ক ব্যর্থ হয়েছে')
-      setTimeout(() => setSyncMessage(''), 3000)
-    } finally {
-      setSyncing(false)
-    }
-  }
 
   const loadNotifications = async () => {
     if (!user) return
@@ -379,39 +354,6 @@ export const Header: React.FC<HeaderProps> = ({ setMobileOpen }) => {
             )}
           </div>
         )}
-
-        {/* Real-time Cloud Auto-Sync Indicator */}
-        <div className="relative">
-          <div
-            onClick={handleCloudSync}
-            className="cursor-pointer px-2.5 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800/80 hover:border-emerald-500/40 transition flex items-center gap-2 text-xs"
-            title="স্বয়ংক্রিয় রিয়েল-টাইম ক্লাউড সিঙ্ক সক্রিয় (কোনো ক্লিক ছাড়াই ডিভাইস টু ডিভাইস অটো আপডেট)"
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="text-[11px] font-medium text-emerald-400/90 hidden sm:inline">
-              অটো সিঙ্ক সক্রিয়
-            </span>
-            <RefreshCw className={cn("h-3 w-3 text-slate-400", syncing && "animate-spin text-emerald-400")} />
-          </div>
-
-          {syncMessage && (
-            <div className="absolute right-0 top-full mt-2 px-3 py-1.5 bg-emerald-950/95 border border-emerald-500/50 rounded-xl text-[11px] text-emerald-300 shadow-xl whitespace-nowrap z-50 animate-in fade-in">
-              ✓ {syncMessage}
-            </div>
-          )}
-        </div>
-
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
-          title={theme === 'dark' ? 'লাইট মোড চালু করুন' : 'ডার্ক মোড চালু করুন'}
-        >
-          {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </button>
 
         {/* Notifications Bell */}
         <div className="sm:relative">
