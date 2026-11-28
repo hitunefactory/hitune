@@ -47,6 +47,8 @@ const setTabUser = (userId: string, role: UserRole) => {
 const clearTabUser = () => {
   sessionStorage.removeItem(CURRENT_USER_KEY)
   sessionStorage.removeItem(CURRENT_ROLE_KEY)
+  localStorage.removeItem(CURRENT_USER_KEY)
+  localStorage.removeItem(CURRENT_ROLE_KEY)
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

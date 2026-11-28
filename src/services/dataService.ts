@@ -28,6 +28,7 @@ import {
 // Fresh production storage keys
 const STORAGE_KEYS = {
   ORDERS: 'hitune_prod_orders_v2',
+  DELETED_ORDERS: 'hitune_prod_deleted_orders_v1',
   STAFF: 'hitune_prod_staff_v2',
   CATEGORIES: 'hitune_prod_categories_v2',
   PAYMENTS: 'hitune_prod_payments_v2',
@@ -86,6 +87,100 @@ class DataService {
 
   private liveTablesAvailable: boolean | null = null
   private realtimeChannel: any = null
+  private deletedOrderKeys: Set<string> = new Set(loadLocal<string[]>(STORAGE_KEYS.DELETED_ORDERS, []))
+  private syncingOrderIds: Set<string> = new Set()
+
+  private saveDeletedOrderKeys(): void {
+    const bounded = Array.from(this.deletedOrderKeys).slice(-500)
+    this.deletedOrderKeys = new Set(bounded)
+    saveLocal(STORAGE_KEYS.DELETED_ORDERS, bounded)
+  }
+
+  private isOrderDeleted(id?: string | null, orderNumber?: string | null): boolean {
+    if (id && this.deletedOrderKeys.has(id)) return true
+    if (orderNumber && this.deletedOrderKeys.has(orderNumber)) return true
+    return false
+  }
+
+  private markOrderDeleted(ids: Array<string | null | undefined>, orderNumbers: Array<string | null | undefined> = []): void {
+    let changed = false
+    for (const id of ids) {
+      if (id && !this.deletedOrderKeys.has(id)) {
+        this.deletedOrderKeys.add(id)
+        changed = true
+      }
+    }
+    for (const num of orderNumbers) {
+      if (num && !this.deletedOrderKeys.has(num)) {
+        this.deletedOrderKeys.add(num)
+        changed = true
+      }
+    }
+    if (changed) this.saveDeletedOrderKeys()
+  }
+
+  private unmarkOrderDeleted(ids: Array<string | null | undefined>, orderNumbers: Array<string | null | undefined> = []): void {
+    let changed = false
+    for (const key of [...ids, ...orderNumbers]) {
+      if (key && this.deletedOrderKeys.delete(key)) {
+        changed = true
+      }
+    }
+    if (changed) this.saveDeletedOrderKeys()
+  }
+
+  private purgeOrderLocalArtifacts(orderIds: string[], orderNumbers: string[]): void {
+    const idSet = new Set(orderIds.filter(Boolean))
+    const numSet = new Set(orderNumbers.filter(Boolean))
+    if (idSet.size === 0 && numSet.size === 0) return
+
+    let commentsChanged = false
+    let subsChanged = false
+    let revsChanged = false
+    idSet.forEach((oid) => {
+      if (this.comments[oid]) {
+        delete this.comments[oid]
+        commentsChanged = true
+      }
+      if (this.submissions[oid]) {
+        delete this.submissions[oid]
+        subsChanged = true
+      }
+      if (this.revisions[oid]) {
+        delete this.revisions[oid]
+        revsChanged = true
+      }
+    })
+    if (commentsChanged) saveLocal(STORAGE_KEYS.COMMENTS, this.comments)
+    if (subsChanged) saveLocal(STORAGE_KEYS.SUBMISSIONS, this.submissions)
+    if (revsChanged) saveLocal(STORAGE_KEYS.REVISIONS, this.revisions)
+
+    const prevPaymentsLen = this.payments.length
+    this.payments = this.payments.filter(
+      (p) => !idSet.has(p.order_id) && (!p.order_number || !numSet.has(p.order_number))
+    )
+    if (this.payments.length !== prevPaymentsLen) {
+      saveLocal(STORAGE_KEYS.PAYMENTS, this.payments)
+    }
+
+    const removedNotifIds: string[] = []
+    this.notifications = this.notifications.filter((n) => {
+      const matchesId = Boolean(n.link && Array.from(idSet).some((oid) => n.link!.includes(oid)))
+      const matchesNum = Boolean(n.message && Array.from(numSet).some((num) => n.message!.includes(num)))
+      if (matchesId || matchesNum) {
+        removedNotifIds.push(n.id)
+        return false
+      }
+      return true
+    })
+    if (removedNotifIds.length > 0) {
+      saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
+      const dismissed = new Set(loadLocal<string[]>(STORAGE_KEYS.NOTIF_DISMISSED, []))
+      removedNotifIds.forEach((rid) => dismissed.add(rid))
+      saveLocal(STORAGE_KEYS.NOTIF_DISMISSED, Array.from(dismissed).slice(-500))
+      this.emitNotificationsUpdated()
+    }
+  }
 
   initRealtimeSubscription(onUpdate?: () => void): () => void {
     if (!isSupabaseConfigured) return () => {}
@@ -154,55 +249,59 @@ class DataService {
   // -------------------------------------------------------------
   async syncLocalOrderToCloud(order: Order): Promise<Order | null> {
     if (!isSupabaseConfigured) return null
+    if (isUuid(order.id)) return null
+    if (this.isOrderDeleted(order.id, order.order_number)) return null
+    if (this.syncingOrderIds.has(order.id)) return null
 
-    // 1. Resolve safe category UUID
-    await this.getCategories()
-    let safeCatId: string | null = isUuid(order.category_id) ? order.category_id : null
-    if (!safeCatId && order.category) {
-      const matched = this.categories.find(
-        (c) => isUuid(c.id) && (c.slug === order.category?.slug || c.id === order.category?.id)
-      )
-      if (matched) safeCatId = matched.id
-    }
-    if (!safeCatId && this.categories.length > 0) {
-      const firstValid = this.categories.find((c) => isUuid(c.id))
-      if (firstValid) safeCatId = firstValid.id
-    }
-
-    // 2. Resolve safe staff UUIDs
-    const safeAudioId = isUuid(order.assigned_audio_staff_id) ? order.assigned_audio_staff_id : null
-    const safeVideoId = isUuid(order.assigned_video_staff_id) ? order.assigned_video_staff_id : null
-    const safeCreatedBy = isUuid(order.created_by) ? order.created_by : null
-
-    const insertPayload: any = {
-      title: order.title,
-      client_name: order.client_name,
-      client_phone: order.client_phone,
-      client_address: order.client_address || '',
-      category_id: safeCatId,
-      priority: order.priority || 'NORMAL',
-      deadline: order.deadline || null,
-      audio_required: order.audio_required ?? true,
-      video_required: order.video_required ?? false,
-      overall_status: order.overall_status || 'NEW',
-      total_amount: Number(order.total_amount) || 0,
-      advance_amount: Number(order.advance_amount) || 0,
-      paid_amount: Number(order.paid_amount) || 0,
-      due_amount: Number(order.due_amount) || 0,
-      payment_status: order.payment_status || 'UNPAID',
-      description: order.description || '',
-      internal_instructions: order.internal_instructions || '',
-      assigned_audio_staff_id: safeAudioId,
-      assigned_video_staff_id: safeVideoId,
-      created_by: safeCreatedBy,
-      created_at: order.created_at || new Date().toISOString(),
-    }
-
-    if (order.order_number && order.order_number.startsWith('HT-')) {
-      insertPayload.order_number = order.order_number
-    }
-
+    this.syncingOrderIds.add(order.id)
     try {
+      // 1. Resolve safe category UUID
+      await this.getCategories()
+      let safeCatId: string | null = isUuid(order.category_id) ? order.category_id : null
+      if (!safeCatId && order.category) {
+        const matched = this.categories.find(
+          (c) => isUuid(c.id) && (c.slug === order.category?.slug || c.id === order.category?.id)
+        )
+        if (matched) safeCatId = matched.id
+      }
+      if (!safeCatId && this.categories.length > 0) {
+        const firstValid = this.categories.find((c) => isUuid(c.id))
+        if (firstValid) safeCatId = firstValid.id
+      }
+
+      // 2. Resolve safe staff UUIDs
+      const safeAudioId = isUuid(order.assigned_audio_staff_id) ? order.assigned_audio_staff_id : null
+      const safeVideoId = isUuid(order.assigned_video_staff_id) ? order.assigned_video_staff_id : null
+      const safeCreatedBy = isUuid(order.created_by) ? order.created_by : null
+
+      const insertPayload: any = {
+        title: order.title,
+        client_name: order.client_name,
+        client_phone: order.client_phone,
+        client_address: order.client_address || '',
+        category_id: safeCatId,
+        priority: order.priority || 'NORMAL',
+        deadline: order.deadline || null,
+        audio_required: order.audio_required ?? true,
+        video_required: order.video_required ?? false,
+        overall_status: order.overall_status || 'NEW',
+        total_amount: Number(order.total_amount) || 0,
+        advance_amount: Number(order.advance_amount) || 0,
+        paid_amount: Number(order.paid_amount) || 0,
+        due_amount: Number(order.due_amount) || 0,
+        payment_status: order.payment_status || 'UNPAID',
+        description: order.description || '',
+        internal_instructions: order.internal_instructions || '',
+        assigned_audio_staff_id: safeAudioId,
+        assigned_video_staff_id: safeVideoId,
+        created_by: safeCreatedBy,
+        created_at: order.created_at || new Date().toISOString(),
+      }
+
+      if (order.order_number && order.order_number.startsWith('HT-')) {
+        insertPayload.order_number = order.order_number
+      }
+
       const { data: createdRow, error: insertError } = await supabase
         .from('orders')
         .insert(insertPayload)
@@ -210,6 +309,12 @@ class DataService {
         .single()
 
       if (!insertError && createdRow) {
+        // If deleted while upload was in-flight, undo the cloud insert immediately
+        if (this.isOrderDeleted(order.id, order.order_number) || this.isOrderDeleted(createdRow.id, createdRow.order_number)) {
+          await supabase.from('orders').delete().eq('id', createdRow.id)
+          return null
+        }
+
         const oldId = order.id
         order.id = createdRow.id
         order.order_number = createdRow.order_number || order.order_number
@@ -263,6 +368,8 @@ class DataService {
       }
     } catch (err: any) {
       console.warn('syncLocalOrderToCloud exception:', err.message)
+    } finally {
+      this.syncingOrderIds.delete(order.id)
     }
 
     return null
@@ -273,12 +380,21 @@ class DataService {
 
     let syncedCount = 0
     try {
-      const { data: remoteOrders } = await supabase.from('orders').select('id, order_number')
+      const { data: remoteOrders, error } = await supabase.from('orders').select('id, order_number')
+      if (error) {
+        console.warn('syncAllToCloud fetch error:', error.message)
+        return { syncedOrdersCount: 0, success: false }
+      }
       const remoteIds = new Set((remoteOrders || []).map((r: any) => r.id))
       const remoteNumbers = new Set((remoteOrders || []).map((r: any) => r.order_number))
 
+      // Only upload genuinely offline-created orders (non-UUID & not previously deleted)
       const unsynced = this.orders.filter(
-        (o) => !remoteIds.has(o.id) && (!o.order_number || !remoteNumbers.has(o.order_number))
+        (o) =>
+          !isUuid(o.id) &&
+          !this.isOrderDeleted(o.id, o.order_number) &&
+          !remoteIds.has(o.id) &&
+          (!o.order_number || !remoteNumbers.has(o.order_number))
       )
 
       for (const ord of unsynced) {
@@ -286,7 +402,7 @@ class DataService {
         if (res) syncedCount++
       }
 
-      // Re-fetch all orders to ensure full sync
+      // Re-fetch all orders to ensure full sync and purge remotely deleted cloud rows
       await this.getOrders()
       return { syncedOrdersCount: syncedCount, success: true }
     } catch (err) {
@@ -317,25 +433,45 @@ class DataService {
           `)
           .order('created_at', { ascending: false })
 
-        if (!error && data) {
-          const liveOrders: Order[] = data.map((o: any) => ({
-            ...o,
-            category: o.category || this.categories.find((c) => c.id === o.category_id) || null,
-            assigned_audio_staff: this.staff.find((s) => s.id === o.assigned_audio_staff_id) || null,
-            assigned_video_staff: this.staff.find((s) => s.id === o.assigned_video_staff_id) || null,
-            comments: this.comments[o.id] || [],
-            revisions: this.revisions[o.id] || [],
-          }))
+        if (!error && Array.isArray(data)) {
+          const liveOrders: Order[] = data
+            .filter((o: any) => !this.isOrderDeleted(o.id, o.order_number))
+            .map((o: any) => ({
+              ...o,
+              category: o.category || this.categories.find((c) => c.id === o.category_id) || null,
+              assigned_audio_staff: this.staff.find((s) => s.id === o.assigned_audio_staff_id) || null,
+              assigned_video_staff: this.staff.find((s) => s.id === o.assigned_video_staff_id) || null,
+              comments: this.comments[o.id] || [],
+              revisions: this.revisions[o.id] || [],
+            }))
 
           const liveIds = new Set(liveOrders.map((o) => o.id))
           const liveNumbers = new Set(liveOrders.map((o) => o.order_number))
 
-          // Detect any local-only orders
+          // Any cached UUID order missing from Supabase was deleted on another device/session — purge it cleanly!
+          const droppedIds: string[] = []
+          const droppedNumbers: string[] = []
+          this.orders.forEach((loc) => {
+            const existsRemotely = liveIds.has(loc.id) || (loc.order_number && liveNumbers.has(loc.order_number))
+            if (!existsRemotely && (isUuid(loc.id) || this.isOrderDeleted(loc.id, loc.order_number))) {
+              droppedIds.push(loc.id)
+              if (loc.order_number) droppedNumbers.push(loc.order_number)
+            }
+          })
+          if (droppedIds.length > 0 || droppedNumbers.length > 0) {
+            this.purgeOrderLocalArtifacts(droppedIds, droppedNumbers)
+          }
+
+          // Only keep genuinely offline-created local orders (!isUuid) not marked as deleted
           const localOnly = this.orders.filter(
-            (loc) => !liveIds.has(loc.id) && (!loc.order_number || !liveNumbers.has(loc.order_number))
+            (loc) =>
+              !isUuid(loc.id) &&
+              !this.isOrderDeleted(loc.id, loc.order_number) &&
+              !liveIds.has(loc.id) &&
+              (!loc.order_number || !liveNumbers.has(loc.order_number))
           )
 
-          // Background upload any local-only orders to Supabase
+          // Background upload any offline-created local orders to Supabase
           if (localOnly.length > 0) {
             for (const locOrder of localOnly) {
               this.syncLocalOrderToCloud(locOrder).catch(() => {})
@@ -354,15 +490,19 @@ class DataService {
       }
     }
 
-    // Always enrich local orders with staff before returning
-    return this.orders.map((o) => ({
-      ...o,
-      assigned_audio_staff: o.assigned_audio_staff || this.staff.find((s) => s.id === o.assigned_audio_staff_id) || null,
-      assigned_video_staff: o.assigned_video_staff || this.staff.find((s) => s.id === o.assigned_video_staff_id) || null,
-    }))
+    // Always filter out deleted tombstones and enrich local orders with staff before returning
+    return this.orders
+      .filter((o) => !this.isOrderDeleted(o.id, o.order_number))
+      .map((o) => ({
+        ...o,
+        assigned_audio_staff: o.assigned_audio_staff || this.staff.find((s) => s.id === o.assigned_audio_staff_id) || null,
+        assigned_video_staff: o.assigned_video_staff || this.staff.find((s) => s.id === o.assigned_video_staff_id) || null,
+      }))
   }
 
   async getOrderById(id: string): Promise<Order | null> {
+    if (this.isOrderDeleted(id, id)) return null
+
     if (this.staff.length === 0) {
       await this.getStaff()
     }
@@ -386,6 +526,7 @@ class DataService {
         const { data, error } = await query.maybeSingle()
 
         if (!error && data) {
+          if (this.isOrderDeleted(data.id, data.order_number)) return null
           const liveOrder: Order = {
             ...data,
             category: data.category || this.categories.find((c) => c.id === data.category_id) || null,
@@ -396,13 +537,27 @@ class DataService {
           }
           return liveOrder
         }
+
+        // If cloud responded cleanly with null, remove stale cached UUID copies instead of serving a deleted order
+        if (!error && !data) {
+          const cached = this.orders.find((o) => o.id === id || o.order_number === id)
+          if (cached && isUuid(cached.id)) {
+            this.orders = this.orders.filter((o) => o.id !== cached.id)
+            saveLocal(STORAGE_KEYS.ORDERS, this.orders)
+            this.purgeOrderLocalArtifacts([cached.id], cached.order_number ? [cached.order_number] : [])
+            return null
+          }
+          if (isUuid(id)) {
+            return null
+          }
+        }
       } catch (err) {
         console.warn('Supabase getOrderById error, using local fallback:', err)
       }
     }
 
     const found = this.orders.find((o) => o.id === id || o.order_number === id)
-    if (!found) return null
+    if (!found || this.isOrderDeleted(found.id, found.order_number)) return null
 
     return {
       ...found,
@@ -777,66 +932,85 @@ class DataService {
   }
 
   async deleteOrder(orderId: string): Promise<boolean> {
-    const idx = this.orders.findIndex((o) => o.id === orderId)
-    if (idx === -1) return false
+    const matched = this.orders.filter((o) => o.id === orderId || o.order_number === orderId)
+    const allIdsToDelete = Array.from(new Set([orderId, ...matched.map((o) => o.id)].filter(Boolean)))
+    const allNumbersToDelete = Array.from(
+      new Set(
+        [
+          ...matched.map((o) => o.order_number),
+          !isUuid(orderId) && orderId.startsWith('HT-') ? orderId : null,
+        ].filter((n): n is string => Boolean(n))
+      )
+    )
 
-    const orderToDelete = this.orders[idx]
-    this.orders.splice(idx, 1)
-    saveLocal(STORAGE_KEYS.ORDERS, this.orders)
-
-    // Remove local related data
-    delete this.comments[orderId]
-    delete this.submissions[orderId]
-    delete this.revisions[orderId]
-    saveLocal(STORAGE_KEYS.COMMENTS, this.comments)
-    saveLocal(STORAGE_KEYS.SUBMISSIONS, this.submissions)
-    saveLocal(STORAGE_KEYS.REVISIONS, this.revisions)
-
-    // Clean up payments & notifications locally
-    this.payments = this.payments.filter((p) => p.order_id !== orderId)
-    saveLocal(STORAGE_KEYS.PAYMENTS, this.payments)
-
-    const removedNotifIds: string[] = []
-    this.notifications = this.notifications.filter((n) => {
-      const matchesId = Boolean(n.link && n.link.includes(orderId))
-      const matchesOrderNum = Boolean(orderToDelete.order_number && n.message?.includes(orderToDelete.order_number))
-      if (matchesId || matchesOrderNum) {
-        removedNotifIds.push(n.id)
-        return false
-      }
-      return true
-    })
-    if (removedNotifIds.length > 0) {
-      saveLocal(STORAGE_KEYS.NOTIFICATIONS, this.notifications)
-      const dismissed = new Set(loadLocal<string[]>(STORAGE_KEYS.NOTIF_DISMISSED, []))
-      removedNotifIds.forEach((rid) => dismissed.add(rid))
-      saveLocal(STORAGE_KEYS.NOTIF_DISMISSED, Array.from(dismissed).slice(-500))
-      this.emitNotificationsUpdated()
+    if (matched.length === 0 && !isUuid(orderId) && allNumbersToDelete.length === 0) {
+      return false
     }
 
+    // Mark deleted tombstones immediately so concurrent sync/realtime cannot resurrect it
+    this.markOrderDeleted(allIdsToDelete, allNumbersToDelete)
+
+    const idSet = new Set(allIdsToDelete)
+    const numSet = new Set(allNumbersToDelete)
+    this.orders = this.orders.filter(
+      (o) => !idSet.has(o.id) && (!o.order_number || !numSet.has(o.order_number))
+    )
+    saveLocal(STORAGE_KEYS.ORDERS, this.orders)
+    this.purgeOrderLocalArtifacts(allIdsToDelete, allNumbersToDelete)
+
     if (await this.checkLiveSupport()) {
-      try {
-        const targetId = isUuid(orderId) ? orderId : orderToDelete.id
-        if (isUuid(targetId)) {
-          // Delete child records first to satisfy foreign key constraints
-          await Promise.allSettled([
-            supabase.from('order_details').delete().eq('order_id', targetId),
-            supabase.from('payments').delete().eq('order_id', targetId),
-            supabase.from('order_comments').delete().eq('order_id', targetId),
-            supabase.from('task_submissions').delete().eq('order_id', targetId),
-            supabase.from('revisions').delete().eq('order_id', targetId),
-            supabase.from('notifications').delete().ilike('link', `%${targetId}%`),
-          ])
-          // Delete the main order
-          await supabase.from('orders').delete().eq('id', targetId)
-        } else if (orderToDelete.order_number) {
-          await Promise.allSettled([
-            supabase.from('notifications').delete().ilike('message', `%${orderToDelete.order_number}%`),
-            supabase.from('orders').delete().eq('order_number', orderToDelete.order_number),
-          ])
+      const targetUuid = isUuid(orderId) ? orderId : allIdsToDelete.find((id) => isUuid(id))
+      const targetOrderNumber = allNumbersToDelete[0]
+
+      const childCleanups: PromiseLike<any>[] = []
+      if (targetUuid) {
+        childCleanups.push(
+          supabase.from('income_records').delete().eq('order_id', targetUuid),
+          supabase.from('deliveries').delete().eq('order_id', targetUuid),
+          supabase.from('order_details').delete().eq('order_id', targetUuid),
+          supabase.from('order_tasks').delete().eq('order_id', targetUuid),
+          supabase.from('task_submissions').delete().eq('order_id', targetUuid),
+          supabase.from('order_attachments').delete().eq('order_id', targetUuid),
+          supabase.from('file_versions').delete().eq('order_id', targetUuid),
+          supabase.from('order_comments').delete().eq('order_id', targetUuid),
+          supabase.from('revisions').delete().eq('order_id', targetUuid),
+          supabase.from('payments').delete().eq('order_id', targetUuid),
+          supabase.from('notifications').delete().ilike('link', `%${targetUuid}%`)
+        )
+      }
+      if (targetOrderNumber) {
+        childCleanups.push(
+          supabase.from('notifications').delete().ilike('message', `%${targetOrderNumber}%`)
+        )
+      }
+      if (childCleanups.length > 0) {
+        await Promise.allSettled(childCleanups)
+      }
+
+      const deleteTargets: Array<{ column: 'id' | 'order_number'; value: string }> = []
+      if (targetUuid) deleteTargets.push({ column: 'id', value: targetUuid })
+      if (targetOrderNumber) deleteTargets.push({ column: 'order_number', value: targetOrderNumber })
+
+      for (const target of deleteTargets) {
+        const { error: deleteErr } = await supabase
+          .from('orders')
+          .delete()
+          .eq(target.column, target.value)
+        const { data: stillThere, error: verifyErr } = await supabase
+          .from('orders')
+          .select('id')
+          .eq(target.column, target.value)
+          .maybeSingle()
+
+        const isNetworkErr = Boolean(deleteErr?.message?.toLowerCase().includes('fetch'))
+        if ((!verifyErr && stillThere) || (deleteErr && !isNetworkErr)) {
+          this.unmarkOrderDeleted(allIdsToDelete, allNumbersToDelete)
+          await this.getOrders().catch(() => {})
+          throw new Error(
+            deleteErr?.message ||
+              'ডাটাবেস পারমিশন (RLS) বা সীমাবদ্ধতার কারণে অর্ডারটি সার্ভার থেকে মুছে ফেলা যায়নি।'
+          )
         }
-      } catch (err) {
-        console.warn('Supabase deleteOrder failed:', err)
       }
     }
 
@@ -1248,13 +1422,20 @@ class DataService {
     if (await this.checkLiveSupport()) {
       try {
         const { data, error } = await supabase.from('payments').select('*').order('created_at', { ascending: false })
-        if (!error && data && data.length > 0) {
-          const livePayments: Payment[] = data.map((p: any) => ({
-            ...p,
-            recorder: this.staff.find((s) => s.id === p.recorded_by) || null,
-          }))
+        if (!error && Array.isArray(data)) {
+          const livePayments: Payment[] = data
+            .filter((p: any) => !this.isOrderDeleted(p.order_id, p.order_number))
+            .map((p: any) => ({
+              ...p,
+              recorder: this.staff.find((s) => s.id === p.recorded_by) || null,
+            }))
           const liveIds = new Set(livePayments.map((p) => p.id))
-          const localOnly = this.payments.filter((loc) => !liveIds.has(loc.id))
+          const localOnly = this.payments.filter(
+            (loc) =>
+              !isUuid(loc.id) &&
+              !liveIds.has(loc.id) &&
+              !this.isOrderDeleted(loc.order_id, loc.order_number)
+          )
           const merged = [...livePayments, ...localOnly]
           this.payments = merged
           saveLocal(STORAGE_KEYS.PAYMENTS, this.payments)
@@ -1264,7 +1445,7 @@ class DataService {
         console.warn('Supabase getPayments error:', err)
       }
     }
-    return [...this.payments]
+    return this.payments.filter((p) => !this.isOrderDeleted(p.order_id, p.order_number))
   }
 
   async recordPayment(payload: {
@@ -1347,14 +1528,14 @@ class DataService {
     if (await this.checkLiveSupport()) {
       try {
         const { data, error } = await supabase.from('expenses').select('*, category:expense_categories(*)').order('expense_date', { ascending: false })
-        if (!error && data && data.length > 0) {
+        if (!error && Array.isArray(data)) {
           const liveExpenses: Expense[] = data.map((e: any) => ({
             ...e,
             category: e.category || this.expenseCategories.find((c) => c.id === e.category_id) || null,
             recorder: this.staff.find((s) => s.id === e.recorded_by) || null,
           }))
           const liveIds = new Set(liveExpenses.map((e) => e.id))
-          const localOnly = this.expenses.filter((loc) => !liveIds.has(loc.id))
+          const localOnly = this.expenses.filter((loc) => !isUuid(loc.id) && !liveIds.has(loc.id))
           const merged = [...liveExpenses, ...localOnly]
           this.expenses = merged
           saveLocal(STORAGE_KEYS.EXPENSES, this.expenses)

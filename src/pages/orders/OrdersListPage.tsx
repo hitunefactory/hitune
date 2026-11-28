@@ -84,9 +84,9 @@ export const OrdersListPage: React.FC = () => {
       await dataService.deleteOrder(deletingOrder.id)
       setDeletingOrder(null)
       await loadData(true)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Delete order failed:', err)
-      alert('অর্ডার মুছে ফেলতে সমস্যা হয়েছে')
+      alert(err?.message || 'অর্ডার মুছে ফেলতে সমস্যা হয়েছে')
     } finally {
       setDeleting(false)
     }

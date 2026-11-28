@@ -94,9 +94,9 @@ export const OrderDetailPage: React.FC = () => {
     try {
       await dataService.deleteOrder(order.id)
       navigate('/orders')
-    } catch (err) {
+    } catch (err: any) {
       console.error('Delete order failed:', err)
-      alert('অর্ডার মুছে ফেলতে সমস্যা হয়েছে')
+      alert(err?.message || 'অর্ডার মুছে ফেলতে সমস্যা হয়েছে')
     } finally {
       setDeleting(false)
       setShowDeleteModal(false)
