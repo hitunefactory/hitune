@@ -736,160 +736,162 @@ export const DashboardPage: React.FC = () => {
         )}
       </div>
 
-      {/* Production Stage Chart & Category Breakdown (hidden for Order Manager to keep dashboard clean) */}
+      {/* Analytics & Lifetime Studio Accounts (hidden for Order Manager to keep dashboard clean) */}
       {currentRole !== 'ORDER_MANAGER' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Production Stage Bar Chart */}
-          <div className="lg:col-span-2 p-5 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-white text-base">প্রোডাকশন পর্যায়ভিত্তিক বিশ্লেষণ</h3>
-              <span className="text-xs text-slate-400">{dateDisplayTitle}</span>
-            </div>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={productionChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={11} />
-                  <YAxis stroke="#64748b" fontSize={11} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#0f172a',
-                      borderColor: '#334155',
-                      borderRadius: '12px',
-                      color: '#fff',
-                      fontSize: '12px',
-                    }}
-                    formatter={(val: any) => [`${formatBengaliNumber(val)} টি`, 'সংখ্যা']}
-                  />
-                  <Bar dataKey="count" fill="#3b82f6" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Category Breakdown Donut */}
-          <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl flex flex-col justify-between">
-            <div>
-              <h3 className="font-bold text-white text-base mb-1">অর্ডার ক্যাটাগরি বণ্টন</h3>
-              <span className="text-xs text-slate-400">
-                {categoryBreakdown.length > 0 ? dateDisplayTitle : 'এই সময়ে অর্ডার নেই'}
-              </span>
-            </div>
-            <div className="h-48 w-full flex items-center justify-center">
-              {categoryBreakdown.length === 0 ? (
-                <div className="text-center text-xs text-slate-500 py-8">
-                  নির্বাচিত তারিখে অর্ডার যুক্ত থাকলে ক্যাটাগরি অনুযায়ী গ্রাফ দেখা যাবে।
-                </div>
-              ) : (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Production Stage Bar Chart */}
+            <div className="lg:col-span-2 p-5 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-white text-base">প্রোডাকশন পর্যায়ভিত্তিক বিশ্লেষণ</h3>
+                <span className="text-xs text-slate-400">{dateDisplayTitle}</span>
+              </div>
+              <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={categoryBreakdown}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={75}
-                      paddingAngle={4}
-                      dataKey="value"
-                    >
-                      {categoryBreakdown.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
+                  <BarChart data={productionChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                    <XAxis dataKey="name" stroke="#64748b" fontSize={11} />
+                    <YAxis stroke="#64748b" fontSize={11} allowDecimals={false} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: '#0f172a',
                         borderColor: '#334155',
                         borderRadius: '12px',
                         color: '#fff',
+                        fontSize: '12px',
                       }}
-                      formatter={(val: any) => [`${formatBengaliNumber(val)} টি`, 'অর্ডার']}
+                      formatter={(val: any) => [`${formatBengaliNumber(val)} টি`, 'সংখ্যা']}
                     />
-                  </PieChart>
+                    <Bar dataKey="count" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                  </BarChart>
                 </ResponsiveContainer>
-              )}
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80 min-h-[40px]">
-              {categoryBreakdown.map((item) => (
-                <div key={item.name} className="flex items-center gap-1.5 text-xs text-slate-300">
-                  <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                  <span className="truncate">{item.name}</span>
-                </div>
-              ))}
+
+            {/* Category Breakdown Donut */}
+            <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl flex flex-col justify-between">
+              <div>
+                <h3 className="font-bold text-white text-base mb-1">অর্ডার ক্যাটাগরি বণ্টন</h3>
+                <span className="text-xs text-slate-400">
+                  {categoryBreakdown.length > 0 ? dateDisplayTitle : 'এই সময়ে অর্ডার নেই'}
+                </span>
+              </div>
+              <div className="h-48 w-full flex items-center justify-center">
+                {categoryBreakdown.length === 0 ? (
+                  <div className="text-center text-xs text-slate-500 py-8">
+                    নির্বাচিত তারিখে অর্ডার যুক্ত থাকলে ক্যাটাগরি অনুযায়ী গ্রাফ দেখা যাবে।
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categoryBreakdown}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={75}
+                        paddingAngle={4}
+                        dataKey="value"
+                      >
+                        {categoryBreakdown.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#0f172a',
+                          borderColor: '#334155',
+                          borderRadius: '12px',
+                          color: '#fff',
+                        }}
+                        formatter={(val: any) => [`${formatBengaliNumber(val)} টি`, 'অর্ডার']}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80 min-h-[40px]">
+                {categoryBreakdown.map((item) => (
+                  <div key={item.name} className="flex items-center gap-1.5 text-xs text-slate-300">
+                    <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                    <span className="truncate">{item.name}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* Lifetime Studio Accounts Accordion (Expandable) */}
+          <div className="rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl overflow-hidden">
+            <button
+              onClick={() => setShowLifetimeSection(!showLifetimeSection)}
+              className="w-full p-5 flex items-center justify-between text-left hover:bg-slate-800/30 transition cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <Coins className="h-5 w-5 text-emerald-400" />
+                <h3 className="font-bold text-white text-base">স্টুডিও লাইফটাইম হিসাব</h3>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-blue-400 font-medium">
+                <span>{showLifetimeSection ? 'বন্ধ করুন' : 'দেখুন'}</span>
+                <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showLifetimeSection ? 'rotate-180' : ''}`} />
+              </div>
+            </button>
+
+            {showLifetimeSection && (
+              <div className="p-5 pt-0 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+                <StatCard
+                  title="মোট পেমেন্ট"
+                  value={lifetimeStats.totalReceivedPayments}
+                  icon={Wallet}
+                  colorScheme="emerald"
+                  isCurrency
+                  onClick={
+                    hasRole(['SUPER_ADMIN', 'ACCOUNTANT', 'ORDER_MANAGER'])
+                      ? () => navigate('/accounting?tab=income')
+                      : undefined
+                  }
+                />
+                <StatCard
+                  title="মোট বকেয়া"
+                  value={lifetimeStats.totalOutstandingBalances}
+                  icon={AlertCircle}
+                  colorScheme="amber"
+                  isCurrency
+                  onClick={
+                    hasRole(['SUPER_ADMIN', 'ACCOUNTANT', 'ORDER_MANAGER'])
+                      ? () => navigate('/accounting')
+                      : undefined
+                  }
+                />
+                <StatCard
+                  title="মোট খরচ"
+                  value={lifetimeStats.totalExpenses}
+                  icon={TrendingUp}
+                  colorScheme="rose"
+                  isCurrency
+                  onClick={
+                    hasRole(['SUPER_ADMIN', 'ACCOUNTANT', 'ORDER_MANAGER'])
+                      ? () => navigate('/accounting?tab=expenses')
+                      : undefined
+                  }
+                />
+                <StatCard
+                  title="নেট ব্যালেন্স"
+                  value={lifetimeStats.netCashBalance}
+                  icon={ArrowUpRight}
+                  colorScheme="blue"
+                  isCurrency
+                  onClick={
+                    hasRole(['SUPER_ADMIN', 'ACCOUNTANT', 'ORDER_MANAGER'])
+                      ? () => navigate('/accounting')
+                      : undefined
+                  }
+                />
+              </div>
+            )}
+          </div>
+        </>
       )}
-
-      {/* Lifetime Studio Accounts Accordion (Expandable) */}
-      <div className="rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl overflow-hidden">
-        <button
-          onClick={() => setShowLifetimeSection(!showLifetimeSection)}
-          className="w-full p-5 flex items-center justify-between text-left hover:bg-slate-800/30 transition cursor-pointer"
-        >
-          <div className="flex items-center gap-3">
-            <Coins className="h-5 w-5 text-emerald-400" />
-            <h3 className="font-bold text-white text-base">স্টুডিও লাইফটাইম হিসাব</h3>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-blue-400 font-medium">
-            <span>{showLifetimeSection ? 'বন্ধ করুন' : 'দেখুন'}</span>
-            <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showLifetimeSection ? 'rotate-180' : ''}`} />
-          </div>
-        </button>
-
-        {showLifetimeSection && (
-          <div className="p-5 pt-0 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-            <StatCard
-              title="মোট পেমেন্ট"
-              value={lifetimeStats.totalReceivedPayments}
-              icon={Wallet}
-              colorScheme="emerald"
-              isCurrency
-              onClick={
-                hasRole(['SUPER_ADMIN', 'ACCOUNTANT', 'ORDER_MANAGER'])
-                  ? () => navigate('/accounting?tab=income')
-                  : undefined
-              }
-            />
-            <StatCard
-              title="মোট বকেয়া"
-              value={lifetimeStats.totalOutstandingBalances}
-              icon={AlertCircle}
-              colorScheme="amber"
-              isCurrency
-              onClick={
-                hasRole(['SUPER_ADMIN', 'ACCOUNTANT', 'ORDER_MANAGER'])
-                  ? () => navigate('/accounting')
-                  : undefined
-              }
-            />
-            <StatCard
-              title="মোট খরচ"
-              value={lifetimeStats.totalExpenses}
-              icon={TrendingUp}
-              colorScheme="rose"
-              isCurrency
-              onClick={
-                hasRole(['SUPER_ADMIN', 'ACCOUNTANT', 'ORDER_MANAGER'])
-                  ? () => navigate('/accounting?tab=expenses')
-                  : undefined
-              }
-            />
-            <StatCard
-              title="নেট ব্যালেন্স"
-              value={lifetimeStats.netCashBalance}
-              icon={ArrowUpRight}
-              colorScheme="blue"
-              isCurrency
-              onClick={
-                hasRole(['SUPER_ADMIN', 'ACCOUNTANT', 'ORDER_MANAGER'])
-                  ? () => navigate('/accounting')
-                  : undefined
-              }
-            />
-          </div>
-        )}
-      </div>
     </div>
   )
 }
