@@ -18,7 +18,7 @@ import { dataService } from '../../services/dataService'
 import { Order } from '../../types/database'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { useAuth } from '../../contexts/AuthContext'
-import { formatBengaliDate, formatBengaliNumber } from '../../lib/utils'
+import { formatBengaliNumber } from '../../lib/utils'
 import { useBackOverlay } from '../../hooks/useBackOverlay'
 
 export const VideoDeptPage: React.FC = () => {
@@ -244,7 +244,6 @@ export const VideoDeptPage: React.FC = () => {
           </div>
         ) : (
           filteredOrders.map((ord) => {
-            const isAssignedToMe = user && ord.assigned_video_staff_id === user.id
             const isTarget = targetOrderId === ord.id || targetOrderId === ord.order_number
             const isWaitingForAudio = [
               'AUDIO_PENDING',
@@ -279,14 +278,6 @@ export const VideoDeptPage: React.FC = () => {
                   <div className="text-xs text-cyan-400/90 font-medium">
                     {ord.category?.name_bn || 'কাস্টম ভিডিও'}
                   </div>
-
-                  {/* My Assignment Badge */}
-                  {isAssignedToMe && (
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-[11px] font-semibold">
-                      <Video className="h-3 w-3 text-cyan-400" />
-                      <span>আপনার দায়িত্বপ্রাপ্ত কাজ</span>
-                    </div>
-                  )}
 
                   {/* Client and Phone */}
                   <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] space-y-1">
@@ -327,19 +318,6 @@ export const VideoDeptPage: React.FC = () => {
                       </p>
                     </div>
                   ) : null}
-
-                  <div className="text-[11px] text-slate-400 space-y-1 pt-1 border-t border-slate-800">
-                    <div className="flex items-center justify-between">
-                      <span>ডেডলাইন:</span>
-                      <span className="font-medium text-amber-400">{formatBengaliDate(ord.deadline)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>ভিডিও এডিটর:</span>
-                      <span className={ord.assigned_video_staff ? 'text-slate-200 font-medium' : 'text-amber-400 font-medium'}>
-                        {ord.assigned_video_staff?.bengali_name || 'কেউ বরাদ্দ নেই'}
-                      </span>
-                    </div>
-                  </div>
                 </div>
 
                 {/* Actions */}
