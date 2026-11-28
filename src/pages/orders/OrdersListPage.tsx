@@ -51,14 +51,12 @@ export const OrdersListPage: React.FC = () => {
   const [customDate, setCustomDate] = useState<string>(initialCustomDate)
 
   useEffect(() => {
-    const q = searchParams.get('q')
-    const st = searchParams.get('status')
-    const dt = searchParams.get('date') as 'ALL' | 'TODAY' | 'YESTERDAY' | 'DAY_BEFORE' | 'CUSTOM' | null
+    setSearchTerm(searchParams.get('q') || '')
+    setSelectedStatus(searchParams.get('status') || 'ALL')
+    const dt = (searchParams.get('date') as 'ALL' | 'TODAY' | 'YESTERDAY' | 'DAY_BEFORE' | 'CUSTOM' | null) || 'ALL'
+    setSelectedDateFilter(dt)
     const cd = searchParams.get('customDate')
-    if (q !== null) setSearchTerm(q)
-    if (st !== null) setSelectedStatus(st)
-    if (dt !== null) setSelectedDateFilter(dt)
-    if (cd !== null) setCustomDate(cd)
+    if (cd) setCustomDate(cd)
   }, [searchParams])
 
   const loadData = async (isSilent = false) => {

@@ -36,8 +36,7 @@ export const AudioDeptPage: React.FC = () => {
   const [scopeFilter, setScopeFilter] = useState<'ALL' | 'MINE'>('ALL')
 
   useEffect(() => {
-    const st = searchParams.get('status')
-    if (st) setStatusFilter(st)
+    setStatusFilter(searchParams.get('status') || 'ALL')
   }, [searchParams])
 
   // Confirmation Modal

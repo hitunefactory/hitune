@@ -38,9 +38,11 @@ export const AccountingPage: React.FC = () => {
   )
 
   useEffect(() => {
-    if (tabParam === 'income' || tabParam === 'expenses' || tabParam === 'summary') {
-      setActiveTab(tabParam)
-    }
+    setActiveTab(
+      tabParam === 'income' || tabParam === 'expenses' || tabParam === 'summary'
+        ? tabParam
+        : 'summary'
+    )
   }, [tabParam])
 
   // Payment Modal
